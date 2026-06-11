@@ -7,8 +7,9 @@ from pathlib import Path
 
 # ── 설정 ──────────────────────────────────────────
 TISTORY_RSS   = "https://ideas07576.tistory.com/rss"
-POSTS_PER_RUN = 2          # 하루 발행 개수
+POSTS_PER_RUN = 1
 HISTORY_FILE  = "published_history.json"
+ALLOWED_CATEGORIES = ["직장인 투자", "장기 투자"]
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
@@ -19,23 +20,39 @@ THREADS_TOKEN     = os.environ["THREADS_ACCESS_TOKEN"]
 def load_history() -> set:
     if Path(HISTORY_FILE).exists():
         with open(HISTORY_FILE) as f:
-            return set(json.load(f))
+            data = json.load(f)
+            return set(data.get("published", []))
     return set()
 
 
-def save_history(history: set):
+def load_all_published() -> list:
+    if Path(HISTORY_FILE).exists():
+        with open(HISTORY_FILE) as f:
+            data = json.load(f)
+            return data.get("all_time", [])
+    return []
+
+
+def save_history(history: set, all_time: list):
     with open(HISTORY_FILE, "w") as f:
-        json.dump(list(history), f, ensure_ascii=False, indent=2)
+        json.dump({
+            "published": list(history),
+            "all_time": all_time
+        }, f, ensure_ascii=False, indent=2)
 
 
 def fetch_all_posts() -> list:
     feed = feedparser.parse(TISTORY_RSS)
     posts = []
     for entry in feed.entries:
+        tags = [t.term for t in getattr(entry, "tags", [])]
+        if not any(cat in tags for cat in ALLOWED_CATEGORIES):
+            continue
         posts.append({
             "title":   entry.title,
             "link":    entry.link,
             "summary": entry.get("summary", "")[:800],
+            "category": tags[0] if tags else "",
         })
     return posts
 
@@ -96,19 +113,27 @@ def post_to_threads(text: str) -> bool:
 
 def main():
     history   = load_history()
+    all_time  = load_all_published()
     all_posts = fetch_all_posts()
 
+    # 아직 안 올린 글 필터링
     pending = [p for p in reversed(all_posts) if p["link"] not in history]
 
+    # 다 올렸으면 전체 초기화 후 처음부터 다시
     if not pending:
-        print("발행할 새 글이 없어요.")
+        print("모든 글 발행 완료! 처음부터 다시 시작합니다.")
+        history = set()
+        pending = list(reversed(all_posts))
+
+    if not pending:
+        print("발행할 글이 없어요.")
         return
 
     targets = pending[:POSTS_PER_RUN]
     print(f"오늘 발행 대상: {len(targets)}개")
 
     for post in targets:
-        print(f"\n처리 중: {post['title']}")
+        print(f"\n처리 중: {post['title']} [{post['category']}]")
         try:
             threads_text = generate_threads_post(post)
             print(f"생성된 홍보글:\n{threads_text}\n")
@@ -116,13 +141,15 @@ def main():
             success = post_to_threads(threads_text)
             if success:
                 history.add(post["link"])
+                if post["link"] not in all_time:
+                    all_time.append(post["link"])
                 print(f"발행 완료: {post['title']}")
             else:
                 print(f"발행 실패: {post['title']}")
         except Exception as e:
             print(f"오류: {e}")
 
-    save_history(history)
+    save_history(history, all_time)
     print("\n완료!")
 
 
