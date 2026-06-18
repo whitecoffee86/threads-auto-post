@@ -1,15 +1,20 @@
 import os
 import json
+import re
 import feedparser
 import anthropic
 import requests
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 # ── 설정 ──────────────────────────────────────────
 TISTORY_RSS   = "https://ideas07576.tistory.com/rss"
+BLOG_BASE     = "https://ideas07576.tistory.com"
 POSTS_PER_RUN = 1
 HISTORY_FILE  = "published_history.json"
-ALLOWED_CATEGORIES = ["직장인 투자", "장기 투자"]
+
+SHORT_TERM_CATEGORY = "단기 투자"   # 한 번만 발행, 영구 제외
+CYCLE_CATEGORIES = ["직장인 투자", "장기 투자"]  # 전체 글 순환 발행
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
@@ -17,37 +22,73 @@ THREADS_TOKEN     = os.environ["THREADS_ACCESS_TOKEN"]
 # ─────────────────────────────────────────────────
 
 
-def load_history() -> set:
+def load_data() -> dict:
     if Path(HISTORY_FILE).exists():
         with open(HISTORY_FILE) as f:
             data = json.load(f)
-            return set(data.get("published", []))
-    return set()
+            return {
+                "cycle_published": set(data.get("cycle_published", [])),
+                "cycle_all_time": data.get("cycle_all_time", []),
+                "short_term_done": set(data.get("short_term_done", [])),
+            }
+    return {"cycle_published": set(), "cycle_all_time": [], "short_term_done": set()}
 
 
-def load_all_published() -> list:
-    if Path(HISTORY_FILE).exists():
-        with open(HISTORY_FILE) as f:
-            data = json.load(f)
-            return data.get("all_time", [])
-    return []
-
-
-def save_history(history: set, all_time: list):
+def save_data(data: dict):
     with open(HISTORY_FILE, "w") as f:
         json.dump({
-            "published": list(history),
-            "all_time": all_time
+            "cycle_published": list(data["cycle_published"]),
+            "cycle_all_time": data["cycle_all_time"],
+            "short_term_done": list(data["short_term_done"]),
         }, f, ensure_ascii=False, indent=2)
 
 
-def fetch_all_posts() -> list:
+def fetch_post_urls_from_sitemap() -> list:
+    urls = []
+    try:
+        res = requests.get(f"{BLOG_BASE}/sitemap.xml", timeout=10)
+        if res.status_code == 200:
+            root = ET.fromstring(res.content)
+            ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+            all_urls = [loc.text for loc in root.findall(".//sm:loc", ns)]
+            urls = [
+                u for u in all_urls
+                if "/category/" not in u
+                and "/tag/" not in u
+                and u.rstrip("/") != BLOG_BASE
+                and re.search(r"/\d+$", u.rstrip("/"))
+            ]
+    except Exception as e:
+        print(f"사이트맵 가져오기 실패: {e}")
+    return urls
+
+
+def fetch_post_detail(url: str) -> dict:
+    try:
+        res = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        html = res.text
+
+        title_match = re.search(r'<meta property="og:title" content="([^"]*)"', html)
+        desc_match  = re.search(r'<meta property="og:description" content="([^"]*)"', html)
+        title = title_match.group(1) if title_match else url
+        summary = desc_match.group(1) if desc_match else ""
+
+        category = ""
+        cat_link = re.search(r'/category/([^"/]+)', html)
+        if cat_link:
+            category = requests.utils.unquote(cat_link.group(1))
+
+        return {"title": title, "link": url, "summary": summary[:800], "category": category}
+    except Exception as e:
+        print(f"글 상세 가져오기 실패 ({url}): {e}")
+        return {"title": url, "link": url, "summary": "", "category": ""}
+
+
+def fetch_rss_posts() -> list:
     feed = feedparser.parse(TISTORY_RSS)
     posts = []
     for entry in feed.entries:
         tags = [t.term for t in getattr(entry, "tags", [])]
-        if not any(cat in tags for cat in ALLOWED_CATEGORIES):
-            continue
         posts.append({
             "title":   entry.title,
             "link":    entry.link,
@@ -111,46 +152,75 @@ def post_to_threads(text: str) -> bool:
     return True
 
 
+def publish_one(post: dict) -> bool:
+    print(f"\n처리 중: {post['title']} [{post.get('category', '')}]")
+    try:
+        threads_text = generate_threads_post(post)
+        print(f"생성된 홍보글:\n{threads_text}\n")
+        success = post_to_threads(threads_text)
+        if success:
+            print(f"발행 완료: {post['title']}")
+        else:
+            print(f"발행 실패: {post['title']}")
+        return success
+    except Exception as e:
+        print(f"오류: {e}")
+        return False
+
+
 def main():
-    history   = load_history()
-    all_time  = load_all_published()
-    all_posts = fetch_all_posts()
+    data = load_data()
+    published_count = 0
 
-    # 아직 안 올린 글 필터링
-    pending = [p for p in reversed(all_posts) if p["link"] not in history]
+    # 1순위: 단기 투자 — 신규 글만, 한 번 발행되면 영구 제외
+    rss_posts = fetch_rss_posts()
+    short_term_new = [
+        p for p in rss_posts
+        if p["category"] == SHORT_TERM_CATEGORY and p["link"] not in data["short_term_done"]
+    ]
 
-    # 다 올렸으면 전체 초기화 후 처음부터 다시
-    if not pending:
-        print("모든 글 발행 완료! 처음부터 다시 시작합니다.")
-        history = set()
-        pending = list(reversed(all_posts))
+    if short_term_new and published_count < POSTS_PER_RUN:
+        post = short_term_new[0]
+        if publish_one(post):
+            data["short_term_done"].add(post["link"])
+            published_count += 1
 
-    if not pending:
-        print("발행할 글이 없어요.")
-        return
+    # 2순위: 직장인 투자 / 장기 투자 — 전체 글 순환
+    remaining = POSTS_PER_RUN - published_count
+    if remaining > 0:
+        urls = fetch_post_urls_from_sitemap()
+        cycle_posts = []
+        for u in urls:
+            if u in data["cycle_published"]:
+                continue
+            detail = fetch_post_detail(u)
+            if detail["category"] in CYCLE_CATEGORIES:
+                cycle_posts.append(detail)
+            if len(cycle_posts) >= remaining:
+                break
 
-    targets = pending[:POSTS_PER_RUN]
-    print(f"오늘 발행 대상: {len(targets)}개")
+        if not cycle_posts:
+            print("순환 대상 글을 모두 발행함. 기록 초기화 후 다시 시작합니다.")
+            data["cycle_published"] = set()
+            for u in urls:
+                detail = fetch_post_detail(u)
+                if detail["category"] in CYCLE_CATEGORIES:
+                    cycle_posts.append(detail)
+                if len(cycle_posts) >= remaining:
+                    break
 
-    for post in targets:
-        print(f"\n처리 중: {post['title']} [{post['category']}]")
-        try:
-            threads_text = generate_threads_post(post)
-            print(f"생성된 홍보글:\n{threads_text}\n")
+        for post in cycle_posts[:remaining]:
+            if publish_one(post):
+                data["cycle_published"].add(post["link"])
+                if post["link"] not in data["cycle_all_time"]:
+                    data["cycle_all_time"].append(post["link"])
+                published_count += 1
 
-            success = post_to_threads(threads_text)
-            if success:
-                history.add(post["link"])
-                if post["link"] not in all_time:
-                    all_time.append(post["link"])
-                print(f"발행 완료: {post['title']}")
-            else:
-                print(f"발행 실패: {post['title']}")
-        except Exception as e:
-            print(f"오류: {e}")
+    if published_count == 0:
+        print("발행할 글이 없습니다.")
 
-    save_history(history, all_time)
-    print("\n완료!")
+    save_data(data)
+    print(f"\n완료! 총 {published_count}개 발행")
 
 
 if __name__ == "__main__":
