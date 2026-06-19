@@ -1,6 +1,5 @@
 import os
 import json
-import re
 import feedparser
 import anthropic
 import requests
@@ -12,10 +11,10 @@ BLOG_BASE     = "https://ideas07576.tistory.com"
 POSTS_PER_RUN = 1
 HISTORY_FILE  = "published_history.json"
 
-SHORT_TERM_RSS = f"{BLOG_BASE}/category/단기 투자/rss"
+SHORT_TERM_RSS = f"{BLOG_BASE}/category/%EB%8B%A8%EA%B8%B0%20%ED%88%AC%EC%9E%90/rss"
 CYCLE_RSS_LIST = [
-    f"{BLOG_BASE}/category/직장인 투자/rss",
-    f"{BLOG_BASE}/category/장기 투자/rss",
+    f"{BLOG_BASE}/category/%EC%A7%81%EC%9E%A5%EC%9D%B8%20%ED%88%AC%EC%9E%90/rss",
+    f"{BLOG_BASE}/category/%EC%9E%A5%EA%B8%B0%20%ED%88%AC%EC%9E%90/rss",
 ]
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
