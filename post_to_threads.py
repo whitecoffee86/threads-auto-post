@@ -4,18 +4,19 @@ import re
 import feedparser
 import anthropic
 import requests
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
 # ── 설정 ──────────────────────────────────────────
-TISTORY_RSS   = "https://ideas07576.tistory.com/rss"
 BLOG_BASE     = "https://ideas07576.tistory.com"
 POSTS_PER_RUN = 1
 HISTORY_FILE  = "published_history.json"
 
-SHORT_TERM_CATEGORY = "단기 투자"
-CYCLE_CATEGORIES    = ["직장인 투자", "장기 투자"]
+SHORT_TERM_RSS = f"{BLOG_BASE}/category/단기 투자/rss"
+CYCLE_RSS_LIST = [
+    f"{BLOG_BASE}/category/직장인 투자/rss",
+    f"{BLOG_BASE}/category/장기 투자/rss",
+]
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
@@ -46,11 +47,10 @@ def save_data(data: dict):
         }, f, ensure_ascii=False, indent=2)
 
 
-def fetch_rss_posts() -> list:
-    feed = feedparser.parse(TISTORY_RSS)
+def fetch_rss(url: str) -> list:
+    feed = feedparser.parse(url)
     posts = []
     for entry in feed.entries:
-        tags = [t.term for t in getattr(entry, "tags", [])]
         pub_date = None
         if hasattr(entry, "published_parsed") and entry.published_parsed:
             pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc).astimezone(KST).date()
@@ -58,51 +58,19 @@ def fetch_rss_posts() -> list:
             "title":    entry.title,
             "link":     entry.link,
             "summary":  entry.get("summary", "")[:800],
-            "category": tags[0] if tags else "",
             "pub_date": pub_date,
         })
     return posts
 
 
-def fetch_post_urls_from_sitemap() -> list:
-    urls = []
-    try:
-        res = requests.get(f"{BLOG_BASE}/sitemap.xml", timeout=10)
-        if res.status_code == 200:
-            root = ET.fromstring(res.content)
-            ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-            all_urls = [loc.text for loc in root.findall(".//sm:loc", ns)]
-            urls = [
-                u for u in all_urls
-                if "/category/" not in u
-                and "/tag/" not in u
-                and u.rstrip("/") != BLOG_BASE
-                and re.search(r"/\d+$", u.rstrip("/"))
-            ]
-    except Exception as e:
-        print(f"사이트맵 가져오기 실패: {e}")
-    return urls
-
-
-def fetch_post_detail(url: str) -> dict:
-    try:
-        res = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-        html = res.text
-
-        title_match = re.search(r'<meta property="og:title" content="([^"]*)"', html)
-        desc_match  = re.search(r'<meta property="og:description" content="([^"]*)"', html)
-        title   = title_match.group(1) if title_match else url
-        summary = desc_match.group(1)  if desc_match  else ""
-
-        category = ""
-        cat_link = re.search(r'/category/([^"/]+)', html)
-        if cat_link:
-            category = requests.utils.unquote(cat_link.group(1))
-
-        return {"title": title, "link": url, "summary": summary[:800], "category": category}
-    except Exception as e:
-        print(f"글 상세 가져오기 실패 ({url}): {e}")
-        return {"title": url, "link": url, "summary": "", "category": ""}
+def fetch_all_cycle_posts(data: dict) -> list:
+    all_posts = []
+    for rss_url in CYCLE_RSS_LIST:
+        posts = fetch_rss(rss_url)
+        for p in posts:
+            if p["link"] not in data["cycle_published"]:
+                all_posts.append(p)
+    return all_posts
 
 
 def generate_threads_post(post: dict) -> str:
@@ -160,7 +128,7 @@ def post_to_threads(text: str) -> bool:
 
 
 def publish_one(post: dict) -> bool:
-    print(f"\n처리 중: {post['title']} [{post.get('category', '')}]")
+    print(f"\n처리 중: {post['title']}")
     try:
         threads_text = generate_threads_post(post)
         print(f"생성된 홍보글:\n{threads_text}\n")
@@ -181,11 +149,10 @@ def main():
     today = datetime.now(KST).date()
 
     # 1순위: 단기 투자 — 오늘 발행된 글만, 한 번 발행되면 영구 제외
-    rss_posts = fetch_rss_posts()
+    short_term_posts = fetch_rss(SHORT_TERM_RSS)
     short_term_new = [
-        p for p in rss_posts
-        if p["category"] == SHORT_TERM_CATEGORY
-        and p["link"] not in data["short_term_done"]
+        p for p in short_term_posts
+        if p["link"] not in data["short_term_done"]
         and p["pub_date"] == today
     ]
 
@@ -198,27 +165,12 @@ def main():
     # 2순위: 직장인 투자 / 장기 투자 — 전체 글 순환
     remaining = POSTS_PER_RUN - published_count
     if remaining > 0:
-        urls = fetch_post_urls_from_sitemap()
-        cycle_posts = []
-
-        for u in urls:
-            if u in data["cycle_published"]:
-                continue
-            detail = fetch_post_detail(u)
-            if detail["category"] in CYCLE_CATEGORIES:
-                cycle_posts.append(detail)
-            if len(cycle_posts) >= remaining:
-                break
+        cycle_posts = fetch_all_cycle_posts(data)
 
         if not cycle_posts:
             print("순환 대상 글을 모두 발행함. 기록 초기화 후 다시 시작합니다.")
             data["cycle_published"] = set()
-            for u in urls:
-                detail = fetch_post_detail(u)
-                if detail["category"] in CYCLE_CATEGORIES:
-                    cycle_posts.append(detail)
-                if len(cycle_posts) >= remaining:
-                    break
+            cycle_posts = fetch_all_cycle_posts(data)
 
         for post in cycle_posts[:remaining]:
             if publish_one(post):
