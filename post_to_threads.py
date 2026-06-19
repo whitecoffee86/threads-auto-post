@@ -7,15 +7,10 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
 # ── 설정 ──────────────────────────────────────────
-BLOG_BASE     = "https://ideas07576.tistory.com"
+TISTORY_RSS   = "https://ideas07576.tistory.com/rss"
 POSTS_PER_RUN = 1
 HISTORY_FILE  = "published_history.json"
-
-SHORT_TERM_RSS = f"{BLOG_BASE}/category/%EB%8B%A8%EA%B8%B0%20%ED%88%AC%EC%9E%90/rss"
-CYCLE_RSS_LIST = [
-    f"{BLOG_BASE}/category/%EC%A7%81%EC%9E%A5%EC%9D%B8%20%ED%88%AC%EC%9E%90/rss",
-    f"{BLOG_BASE}/category/%EC%9E%A5%EA%B8%B0%20%ED%88%AC%EC%9E%90/rss",
-]
+SHORT_TERM_CATEGORY = "단기 투자"
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
@@ -30,26 +25,25 @@ def load_data() -> dict:
         with open(HISTORY_FILE) as f:
             data = json.load(f)
             return {
-                "cycle_published":  set(data.get("cycle_published", [])),
-                "cycle_all_time":   data.get("cycle_all_time", []),
-                "short_term_done":  set(data.get("short_term_done", [])),
+                "cycle_published": set(data.get("cycle_published", [])),
+                "short_term_done": set(data.get("short_term_done", [])),
             }
-    return {"cycle_published": set(), "cycle_all_time": [], "short_term_done": set()}
+    return {"cycle_published": set(), "short_term_done": set()}
 
 
 def save_data(data: dict):
     with open(HISTORY_FILE, "w") as f:
         json.dump({
             "cycle_published": list(data["cycle_published"]),
-            "cycle_all_time":  data["cycle_all_time"],
             "short_term_done": list(data["short_term_done"]),
         }, f, ensure_ascii=False, indent=2)
 
 
-def fetch_rss(url: str) -> list:
-    feed = feedparser.parse(url)
+def fetch_rss() -> list:
+    feed = feedparser.parse(TISTORY_RSS)
     posts = []
     for entry in feed.entries:
+        tags = [t.term for t in getattr(entry, "tags", [])]
         pub_date = None
         if hasattr(entry, "published_parsed") and entry.published_parsed:
             pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc).astimezone(KST).date()
@@ -57,19 +51,10 @@ def fetch_rss(url: str) -> list:
             "title":    entry.title,
             "link":     entry.link,
             "summary":  entry.get("summary", "")[:800],
+            "category": tags[0] if tags else "",
             "pub_date": pub_date,
         })
     return posts
-
-
-def fetch_all_cycle_posts(data: dict) -> list:
-    all_posts = []
-    for rss_url in CYCLE_RSS_LIST:
-        posts = fetch_rss(rss_url)
-        for p in posts:
-            if p["link"] not in data["cycle_published"]:
-                all_posts.append(p)
-    return all_posts
 
 
 def generate_threads_post(post: dict) -> str:
@@ -127,7 +112,7 @@ def post_to_threads(text: str) -> bool:
 
 
 def publish_one(post: dict) -> bool:
-    print(f"\n처리 중: {post['title']}")
+    print(f"\n처리 중: {post['title']} [{post.get('category', '')}]")
     try:
         threads_text = generate_threads_post(post)
         print(f"생성된 홍보글:\n{threads_text}\n")
@@ -146,12 +131,13 @@ def main():
     data = load_data()
     published_count = 0
     today = datetime.now(KST).date()
+    all_posts = fetch_rss()
 
     # 1순위: 단기 투자 — 오늘 발행된 글만, 한 번 발행되면 영구 제외
-    short_term_posts = fetch_rss(SHORT_TERM_RSS)
     short_term_new = [
-        p for p in short_term_posts
-        if p["link"] not in data["short_term_done"]
+        p for p in all_posts
+        if p["category"] == SHORT_TERM_CATEGORY
+        and p["link"] not in data["short_term_done"]
         and p["pub_date"] == today
     ]
 
@@ -161,21 +147,26 @@ def main():
             data["short_term_done"].add(post["link"])
             published_count += 1
 
-    # 2순위: 직장인 투자 / 장기 투자 — 전체 글 순환
+    # 2순위: 단기 투자 제외한 나머지 전체 글 순환
     remaining = POSTS_PER_RUN - published_count
     if remaining > 0:
-        cycle_posts = fetch_all_cycle_posts(data)
+        cycle_candidates = [
+            p for p in reversed(all_posts)
+            if p["category"] != SHORT_TERM_CATEGORY
+            and p["link"] not in data["cycle_published"]
+        ]
 
-        if not cycle_posts:
+        if not cycle_candidates:
             print("순환 대상 글을 모두 발행함. 기록 초기화 후 다시 시작합니다.")
             data["cycle_published"] = set()
-            cycle_posts = fetch_all_cycle_posts(data)
+            cycle_candidates = [
+                p for p in reversed(all_posts)
+                if p["category"] != SHORT_TERM_CATEGORY
+            ]
 
-        for post in cycle_posts[:remaining]:
+        for post in cycle_candidates[:remaining]:
             if publish_one(post):
                 data["cycle_published"].add(post["link"])
-                if post["link"] not in data["cycle_all_time"]:
-                    data["cycle_all_time"].append(post["link"])
                 published_count += 1
 
     if published_count == 0:
