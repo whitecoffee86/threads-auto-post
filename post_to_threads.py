@@ -6,6 +6,7 @@ import anthropic
 import requests
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 
 # ── 설정 ──────────────────────────────────────────
 TISTORY_RSS   = "https://ideas07576.tistory.com/rss"
@@ -13,13 +14,15 @@ BLOG_BASE     = "https://ideas07576.tistory.com"
 POSTS_PER_RUN = 1
 HISTORY_FILE  = "published_history.json"
 
-SHORT_TERM_CATEGORY = "단기 투자"   # 한 번만 발행, 영구 제외
-CYCLE_CATEGORIES = ["직장인 투자", "장기 투자"]  # 전체 글 순환 발행
+SHORT_TERM_CATEGORY = "단기 투자"
+CYCLE_CATEGORIES    = ["직장인 투자", "장기 투자"]
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
 THREADS_TOKEN     = os.environ["THREADS_ACCESS_TOKEN"]
 # ─────────────────────────────────────────────────
+
+KST = timezone(timedelta(hours=9))
 
 
 def load_data() -> dict:
@@ -27,9 +30,9 @@ def load_data() -> dict:
         with open(HISTORY_FILE) as f:
             data = json.load(f)
             return {
-                "cycle_published": set(data.get("cycle_published", [])),
-                "cycle_all_time": data.get("cycle_all_time", []),
-                "short_term_done": set(data.get("short_term_done", [])),
+                "cycle_published":  set(data.get("cycle_published", [])),
+                "cycle_all_time":   data.get("cycle_all_time", []),
+                "short_term_done":  set(data.get("short_term_done", [])),
             }
     return {"cycle_published": set(), "cycle_all_time": [], "short_term_done": set()}
 
@@ -38,9 +41,27 @@ def save_data(data: dict):
     with open(HISTORY_FILE, "w") as f:
         json.dump({
             "cycle_published": list(data["cycle_published"]),
-            "cycle_all_time": data["cycle_all_time"],
+            "cycle_all_time":  data["cycle_all_time"],
             "short_term_done": list(data["short_term_done"]),
         }, f, ensure_ascii=False, indent=2)
+
+
+def fetch_rss_posts() -> list:
+    feed = feedparser.parse(TISTORY_RSS)
+    posts = []
+    for entry in feed.entries:
+        tags = [t.term for t in getattr(entry, "tags", [])]
+        pub_date = None
+        if hasattr(entry, "published_parsed") and entry.published_parsed:
+            pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc).astimezone(KST).date()
+        posts.append({
+            "title":    entry.title,
+            "link":     entry.link,
+            "summary":  entry.get("summary", "")[:800],
+            "category": tags[0] if tags else "",
+            "pub_date": pub_date,
+        })
+    return posts
 
 
 def fetch_post_urls_from_sitemap() -> list:
@@ -70,8 +91,8 @@ def fetch_post_detail(url: str) -> dict:
 
         title_match = re.search(r'<meta property="og:title" content="([^"]*)"', html)
         desc_match  = re.search(r'<meta property="og:description" content="([^"]*)"', html)
-        title = title_match.group(1) if title_match else url
-        summary = desc_match.group(1) if desc_match else ""
+        title   = title_match.group(1) if title_match else url
+        summary = desc_match.group(1)  if desc_match  else ""
 
         category = ""
         cat_link = re.search(r'/category/([^"/]+)', html)
@@ -82,20 +103,6 @@ def fetch_post_detail(url: str) -> dict:
     except Exception as e:
         print(f"글 상세 가져오기 실패 ({url}): {e}")
         return {"title": url, "link": url, "summary": "", "category": ""}
-
-
-def fetch_rss_posts() -> list:
-    feed = feedparser.parse(TISTORY_RSS)
-    posts = []
-    for entry in feed.entries:
-        tags = [t.term for t in getattr(entry, "tags", [])]
-        posts.append({
-            "title":   entry.title,
-            "link":    entry.link,
-            "summary": entry.get("summary", "")[:800],
-            "category": tags[0] if tags else "",
-        })
-    return posts
 
 
 def generate_threads_post(post: dict) -> str:
@@ -171,12 +178,15 @@ def publish_one(post: dict) -> bool:
 def main():
     data = load_data()
     published_count = 0
+    today = datetime.now(KST).date()
 
-    # 1순위: 단기 투자 — 신규 글만, 한 번 발행되면 영구 제외
+    # 1순위: 단기 투자 — 오늘 발행된 글만, 한 번 발행되면 영구 제외
     rss_posts = fetch_rss_posts()
     short_term_new = [
         p for p in rss_posts
-        if p["category"] == SHORT_TERM_CATEGORY and p["link"] not in data["short_term_done"]
+        if p["category"] == SHORT_TERM_CATEGORY
+        and p["link"] not in data["short_term_done"]
+        and p["pub_date"] == today
     ]
 
     if short_term_new and published_count < POSTS_PER_RUN:
@@ -190,6 +200,7 @@ def main():
     if remaining > 0:
         urls = fetch_post_urls_from_sitemap()
         cycle_posts = []
+
         for u in urls:
             if u in data["cycle_published"]:
                 continue
@@ -217,7 +228,7 @@ def main():
                 published_count += 1
 
     if published_count == 0:
-        print("발행할 글이 없습니다.")
+        print("오늘 발행할 글이 없습니다.")
 
     save_data(data)
     print(f"\n완료! 총 {published_count}개 발행")
