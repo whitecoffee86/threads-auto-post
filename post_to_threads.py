@@ -110,38 +110,6 @@ def generate_threads_post(post: dict, include_link: bool = True) -> str:
     return msg.content[0].text.strip()
  
  
-def wait_for_container(container_id: str, max_wait: int = 60, interval: int = 5) -> bool:
-    """
-    Threads 미디어 컨테이너가 발행 가능한 상태(FINISHED)가 될 때까지 대기.
-    바로 publish를 호출하면 'Media Not Found' 에러가 나는 경우가 있어서
-    상태를 폴링해서 처리 완료를 확인한 뒤에 발행한다.
-    """
-    status_url = f"https://graph.threads.net/v1.0/{container_id}"
-    waited = 0
-    while waited < max_wait:
-        res = requests.get(status_url, params={
-            "fields": "status,error_message",
-            "access_token": THREADS_TOKEN,
-        })
-        if res.status_code == 200:
-            body = res.json()
-            status = body.get("status")
-            if status == "FINISHED":
-                return True
-            if status == "ERROR":
-                print(f"컨테이너 처리 실패: {body.get('error_message')}")
-                return False
-            # IN_PROGRESS, EXPIRED, PUBLISHED 등은 계속 대기 또는 재확인
-        else:
-            print(f"컨테이너 상태 조회 실패: {res.text}")
- 
-        time.sleep(interval)
-        waited += interval
- 
-    print("컨테이너 상태 확인 타임아웃")
-    return False
- 
- 
 def post_to_threads(text: str) -> bool:
     create_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}/threads"
     res = requests.post(create_url, data={
@@ -158,20 +126,40 @@ def post_to_threads(text: str) -> bool:
         print(f"컨테이너 ID를 받지 못함: {res.text}")
         return False
  
-    # ★ 발행 전 컨테이너 처리 완료까지 대기 (Media Not Found 에러 방지)
-    if not wait_for_container(container_id):
-        return False
+    # TEXT 컨테이너는 Meta의 status 필드(FINISHED 등)가 비디오 전용이라 신뢰할 수 없음.
+    # 대신 컨테이너 생성 리전 -> 발행 리전 간 리플리케이션 지연을 흡수하기 위해
+    # 고정 대기 후, 실패 시 재시도한다.
+    time.sleep(10)
  
     publish_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}/threads_publish"
-    res2 = requests.post(publish_url, data={
-        "creation_id":  container_id,
-        "access_token": THREADS_TOKEN,
-    })
-    if res2.status_code != 200:
+    retry_delays = [10, 20, 30]  # 재시도 간 대기 시간(초), 총 3회 재시도
+ 
+    for attempt in range(1 + len(retry_delays)):
+        res2 = requests.post(publish_url, data={
+            "creation_id":  container_id,
+            "access_token": THREADS_TOKEN,
+        })
+        if res2.status_code == 200:
+            return True
+ 
+        # "Media Not Found" (subcode 4279009)는 리플리케이션 지연으로 인한
+        # 일시적 오류인 경우가 많아 재시도 대상으로 취급
+        try:
+            err = res2.json().get("error", {})
+        except ValueError:
+            err = {}
+        is_media_not_found = err.get("error_subcode") == 4279009
+ 
+        if is_media_not_found and attempt < len(retry_delays):
+            wait = retry_delays[attempt]
+            print(f"발행 재시도 {attempt + 1}/{len(retry_delays)} — {wait}초 후 재시도: {res2.text}")
+            time.sleep(wait)
+            continue
+ 
         print(f"발행 실패: {res2.text}")
         return False
  
-    return True
+    return False
  
  
 def publish_one(post: dict, post_counter: int) -> bool:
