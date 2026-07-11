@@ -28,8 +28,9 @@ def load_data() -> dict:
             return {
                 "cycle_published": set(data.get("cycle_published", [])),
                 "short_term_done": set(data.get("short_term_done", [])),
+                "post_counter": data.get("post_counter", 0),
             }
-    return {"cycle_published": set(), "short_term_done": set()}
+    return {"cycle_published": set(), "short_term_done": set(), "post_counter": 0}
  
  
 def save_data(data: dict):
@@ -37,6 +38,7 @@ def save_data(data: dict):
         json.dump({
             "cycle_published": list(data["cycle_published"]),
             "short_term_done": list(data["short_term_done"]),
+            "post_counter": data["post_counter"],
         }, f, ensure_ascii=False, indent=2)
  
  
@@ -58,22 +60,11 @@ def fetch_rss() -> list:
     return posts
  
  
-def generate_threads_post(post: dict) -> str:
+def generate_threads_post(post: dict, include_link: bool = True) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = f"""아래 블로그 글을 스레드(Threads)에 올릴 홍보글로 작성해줘.
  
-글 제목: {post['title']}
-글 링크: {post['link']}
-내용 요약: {post['summary']}
- 
-스타일 가이드:
-- 광고글처럼 보이면 안 됨. 직장인이 퇴근 후 자연스럽게 공유하는 느낌으로
-- "나도 처음엔 몰랐는데", "알고 보니", "생각보다" 같은 자연스러운 구어체 표현 활용
-- 독자가 "어? 이거 나 얘기네" 싶게 공감 포인트를 첫 문장에 넣기
-- 핵심 인사이트를 2~4문장으로 풀어서 설명 (단순 나열 금지)
-- 마지막에 블로그 링크로 자연스럽게 유도
- 
-형식:
+    if include_link:
+        format_guide = f"""형식:
 1. 첫 줄: 공감 또는 궁금증을 유발하는 후킹 문장 (이모지 1개 포함)
 2. 본문: 핵심 내용을 이야기하듯 3~5문장으로 풀어서 설명
 3. 마지막: "자세한 내용은 블로그에 정리해뒀어요 👇" 또는 비슷한 자연스러운 유도 문구
@@ -83,7 +74,31 @@ def generate_threads_post(post: dict) -> str:
 조건:
 - 전체 400~500자
 - 재테크/투자 관심 직장인 타깃
-- 절대 광고처럼 보이지 않게
+- 절대 광고처럼 보이지 않게"""
+    else:
+        format_guide = """형식:
+1. 첫 줄: 공감 또는 궁금증을 유발하는 후킹 문장 (이모지 1개 포함)
+2. 본문: 핵심 인사이트를 이야기하듯 3~5문장으로 풀어서 설명하고 그대로 마무리
+3. 링크나 "블로그에서 자세히" 같은 유도 문구는 절대 넣지 말 것 — 인사이트 자체로 완결되는 글
+4. 해시태그: 2~3개 (맨 마지막)
+ 
+조건:
+- 전체 300~400자
+- 재테크/투자 관심 직장인 타깃
+- 절대 광고처럼 보이지 않게, 순수하게 생각을 나누는 글처럼"""
+ 
+    prompt = f"""아래 블로그 글의 핵심 내용을 바탕으로 스레드(Threads)에 올릴 글을 작성해줘.
+ 
+글 제목: {post['title']}
+내용 요약: {post['summary']}
+ 
+스타일 가이드:
+- 광고글처럼 보이면 안 됨. 직장인이 퇴근 후 자연스럽게 생각을 공유하는 느낌으로
+- "나도 처음엔 몰랐는데", "알고 보니", "생각보다" 같은 자연스러운 구어체 표현 활용
+- 독자가 "어? 이거 나 얘기네" 싶게 공감 포인트를 첫 문장에 넣기
+- 핵심 인사이트를 2~4문장으로 풀어서 설명 (단순 나열 금지)
+ 
+{format_guide}
  
 홍보글만 출력해줘. 다른 말 없이."""
  
@@ -159,10 +174,13 @@ def post_to_threads(text: str) -> bool:
     return True
  
  
-def publish_one(post: dict) -> bool:
-    print(f"\n처리 중: {post['title']} [{post.get('category', '')}]")
+def publish_one(post: dict, post_counter: int) -> bool:
+    # 누적 발행 횟수 기준 3번째마다 링크 포함 (0,1,2 -> 링크는 인덱스 2번째)
+    include_link = (post_counter % 3 == 2)
+    link_status = "링크 포함" if include_link else "링크 없음"
+    print(f"\n처리 중: {post['title']} [{post.get('category', '')}] ({link_status})")
     try:
-        threads_text = generate_threads_post(post)
+        threads_text = generate_threads_post(post, include_link=include_link)
         print(f"생성된 홍보글:\n{threads_text}\n")
         success = post_to_threads(threads_text)
         if success:
@@ -191,8 +209,9 @@ def main():
  
     if short_term_new and published_count < POSTS_PER_RUN:
         post = short_term_new[0]
-        if publish_one(post):
+        if publish_one(post, data["post_counter"]):
             data["short_term_done"].add(post["link"])
+            data["post_counter"] += 1
             published_count += 1
  
     # 2순위: 단기 투자 제외한 나머지 전체 글 순환
@@ -213,8 +232,9 @@ def main():
             ]
  
         for post in cycle_candidates[:remaining]:
-            if publish_one(post):
+            if publish_one(post, data["post_counter"]):
                 data["cycle_published"].add(post["link"])
+                data["post_counter"] += 1
                 published_count += 1
  
     if published_count == 0:
