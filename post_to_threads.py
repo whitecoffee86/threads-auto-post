@@ -1,14 +1,17 @@
 import os
+import re
 import time
 import json
 import feedparser
 import anthropic
 import requests
 from pathlib import Path
+from typing import Optional
 from datetime import datetime, timezone, timedelta
  
 # ── 설정 ──────────────────────────────────────────
 TISTORY_RSS   = "https://ideas07576.tistory.com/rss"
+BLOG_BASE     = "https://ideas07576.tistory.com"
 POSTS_PER_RUN = 1
 HISTORY_FILE  = "published_history.json"
 SHORT_TERM_CATEGORY = "단기 투자"
@@ -58,6 +61,51 @@ def fetch_rss() -> list:
             "pub_date": pub_date,
         })
     return posts
+ 
+ 
+def fetch_all_post_links() -> list:
+    """
+    사이트맵에서 블로그 전체 글 URL을 오래된 글부터 순서대로 반환.
+    RSS는 최신 10개만 주기 때문에, 과거글까지 순환에 포함시키려면 이 목록을 써야 함.
+    """
+    try:
+        res = requests.get(f"{BLOG_BASE}/sitemap.xml", timeout=15)
+        res.raise_for_status()
+    except requests.RequestException as e:
+        print(f"사이트맵 조회 실패: {e}")
+        return []
+ 
+    pairs = re.findall(rf"<loc>({re.escape(BLOG_BASE)}/(\d+))</loc>", res.text)
+    # (url, id) 쌍을 id 오름차순(오래된 글 먼저)으로 정렬, 중복 제거
+    unique = {int(pid): url for url, pid in pairs}
+    return [unique[pid] for pid in sorted(unique)]
+ 
+ 
+def fetch_post_meta(link: str) -> Optional[dict]:
+    """개별 글 페이지에서 제목/요약/카테고리를 스크래핑."""
+    try:
+        res = requests.get(link, timeout=15)
+        res.raise_for_status()
+    except requests.RequestException as e:
+        print(f"글 조회 실패 ({link}): {e}")
+        return None
+ 
+    html = res.text
+    title_m = re.search(r'<meta property="og:title" content="([^"]*)"', html)
+    desc_m  = re.search(r'<meta property="og:description" content="([^"]*)"', html)
+    cat_m   = re.search(r'<a[^>]*href="/category/[^"]*"[^>]*>([^<]*)</a>', html)
+ 
+    if not title_m:
+        print(f"제목을 찾지 못함, 건너뜀: {link}")
+        return None
+ 
+    return {
+        "title":    title_m.group(1),
+        "link":     link,
+        "summary":  (desc_m.group(1) if desc_m else "")[:800],
+        "category": cat_m.group(1).strip() if cat_m else "",
+        "pub_date": None,
+    }
  
  
 def generate_threads_post(post: dict, include_link: bool = True) -> str:
@@ -202,24 +250,30 @@ def main():
             data["post_counter"] += 1
             published_count += 1
  
-    # 2순위: 단기 투자 제외한 나머지 전체 글 순환
+    # 2순위: 단기 투자 제외한 나머지 전체 글 순환 (RSS 최신 10개가 아니라 사이트맵 전체 대상)
     remaining = POSTS_PER_RUN - published_count
     if remaining > 0:
-        cycle_candidates = [
-            p for p in reversed(all_posts)
-            if p["category"] != SHORT_TERM_CATEGORY
-            and p["link"] not in data["cycle_published"]
-        ]
+        all_links = fetch_all_post_links()  # 오래된 글부터 정렬됨
  
-        if not cycle_candidates:
+        candidate_links = [l for l in all_links if l not in data["cycle_published"]]
+ 
+        if not candidate_links and all_links:
             print("순환 대상 글을 모두 발행함. 기록 초기화 후 다시 시작합니다.")
             data["cycle_published"] = set()
-            cycle_candidates = [
-                p for p in reversed(all_posts)
-                if p["category"] != SHORT_TERM_CATEGORY
-            ]
+            candidate_links = all_links
  
-        for post in cycle_candidates[:remaining]:
+        chosen = []
+        for link in candidate_links:
+            if len(chosen) >= remaining:
+                break
+            meta = fetch_post_meta(link)
+            if meta is None:
+                continue
+            if meta["category"] == SHORT_TERM_CATEGORY:
+                continue  # 단기 투자는 RSS 경로에서 별도로 처리하므로 순환에서는 제외
+            chosen.append(meta)
+ 
+        for post in chosen:
             if publish_one(post, data["post_counter"]):
                 data["cycle_published"].add(post["link"])
                 data["post_counter"] += 1
