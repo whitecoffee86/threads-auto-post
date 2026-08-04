@@ -1,6 +1,5 @@
 import os
 import json
-import re
 import feedparser
 import anthropic
 import requests
@@ -58,17 +57,6 @@ def fetch_rss() -> list:
     return posts
 
 
-def fetch_og_image(url: str) -> str | None:
-    try:
-        res = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-        match = re.search(r'<meta property="og:image" content="([^"]+)"', res.text)
-        if match:
-            return match.group(1)
-    except Exception as e:
-        print(f"이미지 가져오기 실패: {e}")
-    return None
-
-
 def generate_threads_post(post: dict) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = f"""아래 블로그 글을 스레드(Threads)에 올릴 홍보글로 작성해줘.
@@ -106,35 +94,19 @@ def generate_threads_post(post: dict) -> str:
     return msg.content[0].text.strip()
 
 
-def post_to_threads(text: str, image_url: str | None = None) -> bool:
-    # 1단계: 컨테이너 생성
+def post_to_threads(text: str) -> bool:
     create_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}/threads"
-
-    if image_url:
-        payload = {
-            "media_type":   "IMAGE",
-            "image_url":    image_url,
-            "text":         text,
-            "access_token": THREADS_TOKEN,
-        }
-    else:
-        payload = {
-            "media_type":   "TEXT",
-            "text":         text,
-            "access_token": THREADS_TOKEN,
-        }
-
-    res = requests.post(create_url, data=payload)
+    res = requests.post(create_url, data={
+        "media_type":   "TEXT",
+        "text":         text,
+        "access_token": THREADS_TOKEN,
+    })
     if res.status_code != 200:
         print(f"컨테이너 생성 실패: {res.text}")
-        if image_url:
-            print("이미지 없이 재시도합니다.")
-            return post_to_threads(text, image_url=None)
         return False
 
     container_id = res.json().get("id")
 
-    # 2단계: 발행
     publish_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}/threads_publish"
     res2 = requests.post(publish_url, data={
         "creation_id":  container_id,
@@ -152,14 +124,7 @@ def publish_one(post: dict) -> bool:
     try:
         threads_text = generate_threads_post(post)
         print(f"생성된 홍보글:\n{threads_text}\n")
-
-        image_url = fetch_og_image(post["link"])
-        if image_url:
-            print(f"이미지 첨부: {image_url}")
-        else:
-            print("이미지 없음, 텍스트만 발행")
-
-        success = post_to_threads(threads_text, image_url)
+        success = post_to_threads(threads_text)
         if success:
             print(f"발행 완료: {post['title']}")
         else:
@@ -184,40 +149,4 @@ def main():
         and p["pub_date"] == today
     ]
 
-    if short_term_new and published_count < POSTS_PER_RUN:
-        post = short_term_new[0]
-        if publish_one(post):
-            data["short_term_done"].add(post["link"])
-            published_count += 1
-
-    # 2순위: 단기 투자 제외한 나머지 전체 글 순환
-    remaining = POSTS_PER_RUN - published_count
-    if remaining > 0:
-        cycle_candidates = [
-            p for p in reversed(all_posts)
-            if p["category"] != SHORT_TERM_CATEGORY
-            and p["link"] not in data["cycle_published"]
-        ]
-
-        if not cycle_candidates:
-            print("순환 대상 글을 모두 발행함. 기록 초기화 후 다시 시작합니다.")
-            data["cycle_published"] = set()
-            cycle_candidates = [
-                p for p in reversed(all_posts)
-                if p["category"] != SHORT_TERM_CATEGORY
-            ]
-
-        for post in cycle_candidates[:remaining]:
-            if publish_one(post):
-                data["cycle_published"].add(post["link"])
-                published_count += 1
-
-    if published_count == 0:
-        print("오늘 발행할 글이 없습니다.")
-
-    save_data(data)
-    print(f"\n완료! 총 {published_count}개 발행")
-
-
-if __name__ == "__main__":
-    main()
+    if
