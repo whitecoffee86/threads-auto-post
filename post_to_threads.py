@@ -149,4 +149,40 @@ def main():
         and p["pub_date"] == today
     ]
 
-    if
+    if short_term_new and published_count < POSTS_PER_RUN:
+        post = short_term_new[0]
+        if publish_one(post):
+            data["short_term_done"].add(post["link"])
+            published_count += 1
+
+    # 2순위: 단기 투자 제외한 나머지 전체 글 순환
+    remaining = POSTS_PER_RUN - published_count
+    if remaining > 0:
+        cycle_candidates = [
+            p for p in reversed(all_posts)
+            if p["category"] != SHORT_TERM_CATEGORY
+            and p["link"] not in data["cycle_published"]
+        ]
+
+        if not cycle_candidates:
+            print("순환 대상 글을 모두 발행함. 기록 초기화 후 다시 시작합니다.")
+            data["cycle_published"] = set()
+            cycle_candidates = [
+                p for p in reversed(all_posts)
+                if p["category"] != SHORT_TERM_CATEGORY
+            ]
+
+        for post in cycle_candidates[:remaining]:
+            if publish_one(post):
+                data["cycle_published"].add(post["link"])
+                published_count += 1
+
+    if published_count == 0:
+        print("오늘 발행할 글이 없습니다.")
+
+    save_data(data)
+    print(f"\n완료! 총 {published_count}개 발행")
+
+
+if __name__ == "__main__":
+    main()
