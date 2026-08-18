@@ -80,7 +80,7 @@ def generate_threads_post(post: dict) -> str:
 5. 해시태그: 2~3개 (맨 마지막)
 
 조건:
-- 전체 400~500자
+- 반드시 450자 이내 (띄어쓰기 포함, 이 조건 최우선)
 - 재테크/투자 관심 직장인 타깃
 - 절대 광고처럼 보이지 않게
 
@@ -88,10 +88,15 @@ def generate_threads_post(post: dict) -> str:
 
     msg = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=600,
+        max_tokens=500,
         messages=[{"role": "user", "content": prompt}]
     )
-    return msg.content[0].text.strip()
+    
+    text = msg.content[0].text.strip()
+    # 500자 초과 시 강제 자르기
+    if len(text) > 490:
+        text = text[:490]
+    return text
 
 
 def post_to_threads(text: str) -> bool:
