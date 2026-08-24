@@ -235,6 +235,9 @@ def make_card_image_url(post: dict) -> str | None:
     except Exception as e:
         print(f"카드 이미지 생성 실패: {e}")
         return None
+
+
+def wait_until_ready(container_id: str, max_wait_sec: int = 60, interval_sec: int = 5) -> bool:
     """컨테이너가 FINISHED 상태가 될 때까지 폴링. 링크 미리보기 생성 등 비동기 처리를 기다림."""
     status_url = f"https://graph.threads.net/v1.0/{container_id}"
     waited = 0
