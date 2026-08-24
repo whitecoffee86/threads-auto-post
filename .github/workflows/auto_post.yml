@@ -22,7 +22,9 @@ jobs:
           python-version: '3.11'
 
       - name: 패키지 설치
-        run: pip install anthropic feedparser requests
+        run: |
+          pip install anthropic feedparser requests playwright
+          playwright install --with-deps chromium
 
       - name: git 설정
         run: |
