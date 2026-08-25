@@ -138,52 +138,130 @@ def generate_card_hook(post: dict) -> str:
 
 
 def render_card_image(hook: str, category: str, out_path: Path):
-    """WhiteCoffee 브랜드 스타일(네이비/골드, WC 모노그램)의 정사각 카드 이미지를 HTML → PNG로 렌더링."""
+    """WhiteCoffee 브랜드 스타일(네이비/골드, 캔들차트 시그니처)의 정사각 카드 이미지를 HTML → PNG로 렌더링."""
+
+    # 배경 시그니처: 은은한 캔들차트 실루엣 (상승장 느낌, 골드 8% 투명도)
+    import random
+    random.seed(hook)  # 같은 문구면 같은 패턴 (재현성)
+    bars = []
+    x = 0
+    bar_w = 46
+    gap = 22
+    base_y = 1080
+    for i in range(16):
+        h = random.randint(90, 420)
+        wick_h = h + random.randint(20, 60)
+        y = base_y - h
+        wick_x = x + bar_w / 2
+        bars.append(
+            f'<line x1="{wick_x}" y1="{base_y - wick_h}" x2="{wick_x}" y2="{base_y}" '
+            f'stroke="{BRAND_GOLD}" stroke-width="2" opacity="0.10"/>'
+            f'<rect x="{x}" y="{y}" width="{bar_w}" height="{h}" fill="{BRAND_GOLD}" opacity="0.08"/>'
+        )
+        x += bar_w + gap
+    candlesticks_svg = "".join(bars)
+
     html = f"""
     <html>
     <head>
     <style>
         body {{ margin: 0; }}
         .card {{
+            position: relative;
             width: 1080px;
             height: 1080px;
-            background: {BRAND_NAVY};
+            background: linear-gradient(160deg, #24365c 0%, {BRAND_NAVY} 55%, #16223b 100%);
+            overflow: hidden;
+            box-sizing: border-box;
+            font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+        }}
+        .bg-chart {{
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 1080px;
+            height: 1080px;
+        }}
+        .content {{
+            position: relative;
+            z-index: 2;
+            height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            padding: 80px 76px;
             box-sizing: border-box;
-            padding: 70px;
-            font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
         }}
-        .monogram {{
+        .eyebrow {{
+            display: flex;
+            align-items: center;
+            gap: 14px;
             color: {BRAND_GOLD};
-            font-size: 40px;
-            font-weight: 800;
-            letter-spacing: 2px;
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }}
+        .eyebrow .dot {{
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: {BRAND_GOLD};
+        }}
+        .hook-wrap {{
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
         }}
         .hook {{
             color: #ffffff;
-            font-size: 68px;
+            font-size: 72px;
             font-weight: 800;
-            line-height: 1.4;
+            line-height: 1.42;
             word-break: keep-all;
+            letter-spacing: -1px;
+        }}
+        .underline {{
+            width: 120px;
+            height: 8px;
+            background: {BRAND_GOLD};
+            border-radius: 4px;
+        }}
+        .footer {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }}
         .badge {{
-            align-self: flex-start;
             background: {BRAND_GOLD};
             color: {BRAND_NAVY};
-            font-size: 30px;
+            font-size: 28px;
             font-weight: 700;
-            padding: 14px 28px;
+            padding: 14px 30px;
             border-radius: 999px;
+        }}
+        .wordmark {{
+            color: rgba(255,255,255,0.55);
+            font-size: 26px;
+            font-weight: 500;
         }}
     </style>
     </head>
     <body>
         <div class="card">
-            <div class="monogram">WC</div>
-            <div class="hook">{hook}</div>
-            <div class="badge">{category}</div>
+            <svg class="bg-chart" viewBox="0 0 1080 1080" xmlns="http://www.w3.org/2000/svg">
+                {candlesticks_svg}
+            </svg>
+            <div class="content">
+                <div class="eyebrow"><span class="dot"></span>WhiteCoffee · 주식농사</div>
+                <div class="hook-wrap">
+                    <div class="hook">{hook}</div>
+                    <div class="underline"></div>
+                </div>
+                <div class="footer">
+                    <div class="badge">{category}</div>
+                    <div class="wordmark">ideas07576.tistory.com</div>
+                </div>
+            </div>
         </div>
     </body>
     </html>
