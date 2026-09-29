@@ -1,4 +1,5 @@
 import os
+import html
 import json
 import time
 import subprocess
@@ -140,51 +141,80 @@ def generate_card_hook(post: dict) -> str:
     return hook
 
 
-def extract_chart_data(post: dict) -> dict | None:
-    """글 속에서 카드에 그대로 시각화할 수 있는 실제 수치 데이터를 추출.
+CONTENT_TYPES = ("bar", "line", "donut", "stat", "table", "process")
 
-    반환 형식 (데이터가 없으면 None):
-    {
-        "chart_type": "bar" | "line" | "donut",
-        "hook": "차트 제목 역할을 하는 한 줄 후킹 문구 (25자 이내)",
-        "labels": ["라벨1", "라벨2", ...],   # 2~6개
-        "values": [12.3, 45.6, ...],          # labels와 같은 길이, 숫자만
-        "unit": "%" | "억" | "만원" | "" 등
-    }
 
-    - bar: 서로 다른 대상(지역/상품/연도 등)의 수치 비교
-    - line: 시간 흐름에 따른 추이 (3개 이상 시점)
-    - donut: 구성비/배분 (합이 의미 있는 비율 데이터)
-    실제로 글에 명시된 숫자가 없으면 지어내지 말고 반드시 None을 반환.
+def _esc(value, max_len: int) -> str:
+    """LLM이 준 문자열을 길이 제한 후 HTML 이스케이프 (<, & 등으로 카드 레이아웃이 깨지는 것 방지)."""
+    return html.escape(str(value).strip()[:max_len])
+
+
+def extract_visual_content(post: dict) -> dict | None:
+    """글 내용에 가장 잘 맞는 카드 형태를 자동으로 골라 데이터를 추출.
+
+    후보 형태 (content_type):
+    - "bar":     서로 다른 대상 간의 수치 비교 (지역/상품/연도 등, 2개 이상)
+    - "line":    시간 흐름에 따른 추이 (최소 3개 시점)
+    - "donut":   전체 대비 구성비/배분 (합쳐서 의미 있는 비율)
+    - "stat":    비교 데이터는 없지만 임팩트 있는 숫자 하나가 핵심인 글 ("이것 하나만 기억해" 류)
+    - "table":   두 대상을 여러 항목에 걸쳐 비교하는 글 (A vs B, Before/After)
+    - "process": 단계/순서가 있는 글 (절차, 체크리스트, 확인 방법 등)
+
+    데이터도 표도 순서도 아무것도 못 만들 만큼 내용이 빈약하면 None 반환
+    (이 경우 호출부에서 기존 후킹 문구 카드로 폴백).
+
+    반환 형식은 content_type에 따라 다름 — 아래 각 렌더 함수의 docstring 참고.
     """
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = f"""아래 블로그 글에서 SNS 카드 이미지에 '차트'로 그대로 그릴 수 있는 실제 수치 데이터를 찾아줘.
+    prompt = f"""아래 블로그 글을 SNS 카드 이미지로 만들려고 해. 글 내용에 가장 잘 맞는 형태를 하나만 골라서
+데이터를 뽑아줘.
 
 글 제목: {post['title']}
 내용 요약: {post['summary']}
 
+선택 가능한 content_type과 형식:
+
+1. "bar" — 서로 다른 대상 간 수치 비교 (2~6개)
+   {{"content_type": "bar", "hook": "...", "labels": ["...", "..."], "values": [0, 0], "unit": "...", "is_approx": false}}
+
+2. "line" — 시간 흐름에 따른 추이 (최소 3개 시점)
+   {{"content_type": "line", "hook": "...", "labels": ["...", "..."], "values": [0, 0, 0], "unit": "...", "is_approx": false}}
+
+3. "donut" — 전체 대비 구성비/배분 (합쳐서 의미 있는 비율, 2~4개)
+   {{"content_type": "donut", "hook": "...", "labels": ["...", "..."], "values": [0, 0], "unit": "...", "is_approx": false}}
+
+4. "stat" — 비교 데이터는 없지만 임팩트 있는 숫자/사실 하나가 핵심인 글
+   {{"content_type": "stat", "hook": "...", "stat_value": "800만원", "stat_label": "3년 방치하면 나는 차이", "stat_icon": "💰"}}
+
+5. "table" — 두 대상을 여러 항목으로 비교하는 글 (2~5개 행, 2개 열)
+   {{"content_type": "table", "hook": "...", "table_columns": ["A안", "B안"],
+     "table_rows": [{{"label": "수수료", "values": ["0.03%", "0.15%"]}}, ...]}}
+
+6. "process" — 단계/순서/절차가 있는 글 (3~5단계)
+   {{"content_type": "process", "hook": "...", "process_steps": [{{"emoji": "🔍", "title": "...", "desc": "..."}}, ...]}}
+
+데이터/근거가 전혀 없으면:
+   {{"content_type": "none"}}
+
 규칙:
-1. 글에 실제로 언급된 숫자만 사용해. 절대로 숫자를 지어내거나 추정하지 마.
-2. 비교 가능한 숫자 세트(예: 지역별 가격, 연도별 수익률, 항목별 비중 등)가 2개 이상 있어야 차트로 만들 수 있어.
-3. 그런 데이터가 없으면 (예: 숫자가 거의 없거나 서로 비교 불가능한 경우) 반드시 has_data를 false로 해.
-4. chart_type 선택 기준:
-   - "bar": 서로 다른 대상 간의 수치 비교 (지역, 상품, 항목 등)
-   - "line": 시간 흐름에 따른 추이 (최소 3개 시점)
-   - "donut": 전체 대비 구성비/배분 (합쳐서 의미 있는 비율)
-5. labels는 2~6개, values는 labels와 개수가 같아야 함.
-6. hook은 차트 제목처럼 쓰일 한 줄 문구, 25자 이내, 이모지 1개 포함.
+- 글에 실제로 언급된 내용만 사용해. 숫자든 절차든 지어내지 마.
+- "절반을 넘긴", "두 배 가까이" 같은 정성적 비교 표현은 맥락을 벗어나지 않는 선에서 근사치로 변환 가능
+  (bar/line/donut에서 이 경우 is_approx를 true로). stat/table/process는 텍스트 그대로 요약하면 되므로
+  is_approx가 필요 없음.
+- 후보가 여러 개 가능하면 가장 읽는 사람이 이해하기 쉽고 글의 핵심을 잘 담는 것 하나만 선택해.
+- hook은 카드 제목 역할, 25자 이내, 이모지 1개 포함.
+- stat_value는 "800만원", "3배", "1위"처럼 단위까지 포함한 문자열로.
+- table_rows는 2~5개, table_columns는 정확히 2개.
+- process_steps는 3~5개, 각 title은 10자 이내, desc는 20자 이내, emoji는 단계 내용에 맞는 것 1개.
+- 형태 선택 우선순위: 방법/확인법/절차 글이면 process, 두 대상 비교면 table, 대표 숫자 하나면 stat,
+  비교 가능한 수치 세트가 있으면 bar/line/donut. 글의 핵심 메시지를 가장 잘 보여주는 것을 골라.
 
-아래 JSON 형식으로만 답해. 다른 설명 없이 JSON만 출력.
-
-{{"has_data": true, "chart_type": "bar", "hook": "...", "labels": ["...", "..."], "values": [0, 0], "unit": "억"}}
-
-또는 데이터가 없으면:
-{{"has_data": false}}"""
+아래 JSON 형식으로만 답해. 다른 설명 없이 JSON만 출력."""
 
     try:
         msg = client.messages.create(
             model="claude-opus-4-5",
-            max_tokens=400,
+            max_tokens=600,
             messages=[{"role": "user", "content": prompt}]
         )
         raw = msg.content[0].text.strip()
@@ -196,25 +226,78 @@ def extract_chart_data(post: dict) -> dict | None:
             raw = raw.strip()
         data = json.loads(raw)
 
-        if not data.get("has_data"):
+        content_type = data.get("content_type")
+        if content_type not in CONTENT_TYPES:
             return None
-        if data.get("chart_type") not in ("bar", "line", "donut"):
-            return None
-        labels = data.get("labels") or []
-        values = data.get("values") or []
-        if len(labels) < 2 or len(labels) != len(values):
-            return None
-        values = [float(v) for v in values]
 
-        return {
-            "chart_type": data["chart_type"],
-            "hook": str(data.get("hook", ""))[:40],
-            "labels": [str(l) for l in labels],
-            "values": values,
-            "unit": str(data.get("unit", "")),
-        }
+        hook = _esc(data.get("hook", ""), 40)
+
+        if content_type in ("bar", "line", "donut"):
+            labels = data.get("labels") or []
+            values = data.get("values") or []
+            if len(labels) < 2 or len(labels) != len(values):
+                return None
+            return {
+                "content_type": content_type,
+                "hook": hook,
+                "labels": [_esc(l, 14) for l in labels],
+                "values": [float(v) for v in values],
+                "unit": _esc(data.get("unit", ""), 6),
+                "is_approx": bool(data.get("is_approx", False)),
+            }
+
+        if content_type == "stat":
+            stat_value = str(data.get("stat_value", "")).strip()
+            stat_label = str(data.get("stat_label", "")).strip()
+            if not stat_value or not stat_label:
+                return None
+            return {
+                "content_type": "stat",
+                "hook": hook,
+                "stat_value": _esc(stat_value, 16),
+                "stat_label": _esc(stat_label, 30),
+                "stat_icon": _esc(data.get("stat_icon", "📌"), 8) or "📌",
+            }
+
+        if content_type == "table":
+            columns = data.get("table_columns") or []
+            rows = data.get("table_rows") or []
+            if len(columns) != 2 or not (2 <= len(rows) <= 5):
+                return None
+            clean_rows = []
+            for r in rows:
+                vals = r.get("values") or []
+                if len(vals) != 2:
+                    return None
+                clean_rows.append({"label": _esc(r.get("label", ""), 14), "values": [_esc(v, 14) for v in vals]})
+            return {
+                "content_type": "table",
+                "hook": hook,
+                "table_columns": [_esc(c, 10) for c in columns],
+                "table_rows": clean_rows,
+            }
+
+        if content_type == "process":
+            steps = data.get("process_steps") or []
+            if not (3 <= len(steps) <= 5):
+                return None
+            clean_steps = [
+                {
+                    "emoji": _esc(s.get("emoji", ""), 8),
+                    "title": _esc(s.get("title", ""), 12),
+                    "desc": _esc(s.get("desc", ""), 24),
+                }
+                for s in steps
+            ]
+            return {
+                "content_type": "process",
+                "hook": hook,
+                "process_steps": clean_steps,
+            }
+
+        return None
     except Exception as e:
-        print(f"차트 데이터 추출 실패(폴백 예정): {e}")
+        print(f"시각 콘텐츠 추출 실패(폴백 예정): {e}")
         return None
 
 
@@ -376,22 +459,19 @@ def _render_donut_chart_svg(labels: list, values: list, unit: str,
     return glow + "".join(segs) + center_label + "".join(labels_svg)
 
 
-def render_data_card(hook: str, category: str, chart: dict, out_path: Path):
-    """후킹 문구 + 실제 데이터 차트를 담은 카드 (데이터가 있는 경우)."""
-    chart_type = chart["chart_type"]
-    labels, values, unit = chart["labels"], chart["values"], chart["unit"]
+def _screenshot(html: str, out_path: Path):
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1080, "height": 1080})
+        page.set_content(html)
+        page.screenshot(path=str(out_path))
+        browser.close()
 
-    if chart_type == "bar":
-        chart_svg = _render_bar_chart_svg(labels, values, unit)
-        chart_viewbox, chart_h_css = "0 0 920 460", 460
-    elif chart_type == "line":
-        chart_svg = _render_line_chart_svg(labels, values, unit)
-        chart_viewbox, chart_h_css = "0 0 920 460", 460
-    else:
-        chart_svg = _render_donut_chart_svg(labels, values, unit)
-        chart_viewbox, chart_h_css = "0 0 920 500", 500
 
-    html = f"""
+def _card_shell(hook: str, category: str, middle_html: str, extra_style: str = "",
+                 approx_note: bool = False) -> str:
+    """모든 인포그래픽 카드가 공유하는 배경/헤더/푸터 틀. middle_html만 형태별로 달라짐."""
+    return f"""
     <html>
     <head>
     <style>
@@ -436,7 +516,7 @@ def render_data_card(hook: str, category: str, chart: dict, out_path: Path):
             margin-top: 22px;
             max-width: 920px;
         }}
-        .chart-wrap {{
+        .mid-wrap {{
             flex: 1;
             display: flex;
             align-items: center;
@@ -457,6 +537,8 @@ def render_data_card(hook: str, category: str, chart: dict, out_path: Path):
             border-radius: 999px;
         }}
         .wordmark {{ color: rgba(255,255,255,0.5); font-size: 24px; font-weight: 500; }}
+        .approx-note {{ color: rgba(255,255,255,0.4); font-size: 20px; font-weight: 500; margin-top: 6px; }}
+        {extra_style}
     </style>
     </head>
     <body>
@@ -464,13 +546,14 @@ def render_data_card(hook: str, category: str, chart: dict, out_path: Path):
             <div class="content">
                 <div class="eyebrow"><span class="dot"></span>WhiteCoffee · 주식농사</div>
                 <div class="hook">{hook}</div>
-                <div class="chart-wrap">
-                    <svg width="920" height="{chart_h_css}" viewBox="{chart_viewbox}" xmlns="http://www.w3.org/2000/svg">
-                        {chart_svg}
-                    </svg>
+                <div class="mid-wrap">
+                    {middle_html}
                 </div>
                 <div class="footer">
-                    <div class="badge">{category}</div>
+                    <div>
+                        <div class="badge">{category}</div>
+                        {'<div class="approx-note">* 본문 내용을 바탕으로 한 추정치</div>' if approx_note else ''}
+                    </div>
                     <div class="wordmark">ideas07576.tistory.com</div>
                 </div>
             </div>
@@ -479,12 +562,131 @@ def render_data_card(hook: str, category: str, chart: dict, out_path: Path):
     </html>
     """
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 1080, "height": 1080})
-        page.set_content(html)
-        page.screenshot(path=str(out_path))
-        browser.close()
+
+def render_data_card(hook: str, category: str, chart: dict, out_path: Path):
+    """막대/라인/도넛 차트 카드. chart: extract_visual_content가 content_type in (bar,line,donut)일 때 반환한 dict."""
+    content_type = chart["content_type"]
+    labels, values, unit = chart["labels"], chart["values"], chart["unit"]
+
+    if content_type == "bar":
+        chart_svg = _render_bar_chart_svg(labels, values, unit)
+        chart_viewbox, chart_h_css = "0 0 920 460", 460
+    elif content_type == "line":
+        chart_svg = _render_line_chart_svg(labels, values, unit)
+        chart_viewbox, chart_h_css = "0 0 920 460", 460
+    else:
+        chart_svg = _render_donut_chart_svg(labels, values, unit)
+        chart_viewbox, chart_h_css = "0 0 920 500", 500
+
+    middle_html = f'''
+        <svg width="920" height="{chart_h_css}" viewBox="{chart_viewbox}" xmlns="http://www.w3.org/2000/svg">
+            {chart_svg}
+        </svg>
+    '''
+    html = _card_shell(hook, category, middle_html, approx_note=chart.get("is_approx", False))
+    _screenshot(html, out_path)
+
+
+def render_stat_card(hook: str, category: str, stat: dict, out_path: Path):
+    """핵심 지표 강조형 카드. stat: {"stat_value", "stat_label", "stat_icon"}."""
+    extra_style = f"""
+        .stat-box {{ display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; }}
+        .stat-icon {{ font-size: 160px; line-height: 1; filter: drop-shadow(0 0 40px rgba(201,168,75,0.45)); }}
+        .stat-value {{
+            font-size: 140px; font-weight: 800; color: {BRAND_GOLD_LIGHT};
+            text-shadow: 0 0 50px rgba(201,168,75,0.5); letter-spacing: -2px; line-height: 1;
+        }}
+        .stat-label {{ font-size: 34px; font-weight: 600; color: rgba(255,255,255,0.75); max-width: 760px; word-break: keep-all; }}
+    """
+    middle_html = f'''
+        <div class="stat-box">
+            <div class="stat-icon">{stat["stat_icon"]}</div>
+            <div class="stat-value">{stat["stat_value"]}</div>
+            <div class="stat-label">{stat["stat_label"]}</div>
+        </div>
+    '''
+    html = _card_shell(hook, category, middle_html, extra_style=extra_style)
+    _screenshot(html, out_path)
+
+
+def render_table_card(hook: str, category: str, table: dict, out_path: Path):
+    """비교표 카드. table: {"table_columns": [2개], "table_rows": [{"label","values":[2개]}, ...]}."""
+    cols = table["table_columns"]
+    rows = table["table_rows"]
+
+    extra_style = f"""
+        .cmp-table {{ width: 900px; border-collapse: separate; border-spacing: 0 14px; }}
+        .cmp-table th {{
+            font-size: 28px; font-weight: 700; color: {BRAND_NAVY_DEEP}; text-align: center;
+            background: {BRAND_GOLD}; padding: 18px 0; border-radius: 12px;
+        }}
+        .cmp-table th:first-child {{ background: transparent; }}
+        .cmp-table td {{
+            font-size: 30px; font-weight: 600; color: #ffffff; text-align: center;
+            background: rgba(255,255,255,0.08); padding: 22px 12px;
+        }}
+        .cmp-table td:first-child {{
+            text-align: left; padding-left: 28px; color: rgba(255,255,255,0.6); font-weight: 500; font-size: 26px;
+            background: transparent;
+        }}
+        .cmp-table tr td:nth-child(2) {{ border-radius: 12px 0 0 12px; }}
+        .cmp-table tr td:last-child {{ border-radius: 0 12px 12px 0; }}
+    """
+    header = f"<th></th><th>{cols[0]}</th><th>{cols[1]}</th>"
+    body_rows = "".join(
+        f'<tr><td>{r["label"]}</td><td>{r["values"][0]}</td><td>{r["values"][1]}</td></tr>'
+        for r in rows
+    )
+    middle_html = f'''
+        <table class="cmp-table">
+            <thead><tr>{header}</tr></thead>
+            <tbody>{body_rows}</tbody>
+        </table>
+    '''
+    html = _card_shell(hook, category, middle_html, extra_style=extra_style)
+    _screenshot(html, out_path)
+
+
+def render_process_card(hook: str, category: str, process: dict, out_path: Path):
+    """순서도/체크리스트 카드. process: {"process_steps": [{"title","desc"}, ...]} (3~5단계)."""
+    steps = process["process_steps"]
+
+    extra_style = f"""
+        .steps {{ display: flex; flex-direction: column; gap: 0; width: 880px; }}
+        .step {{ display: flex; align-items: flex-start; gap: 28px; position: relative; padding-bottom: 44px; }}
+        .step:last-child {{ padding-bottom: 0; }}
+        .step-num {{
+            flex-shrink: 0; width: 64px; height: 64px; border-radius: 50%;
+            background: linear-gradient(160deg, {BRAND_GOLD_LIGHT}, {BRAND_GOLD});
+            color: {BRAND_NAVY_DEEP}; font-size: 30px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 24px rgba(201,168,75,0.4); z-index: 1;
+        }}
+        .step-connector {{
+            position: absolute; left: 31px; top: 64px; width: 2px; bottom: -8px;
+            background: rgba(201,168,75,0.35);
+        }}
+        .step-text {{ padding-top: 10px; }}
+        .step-title {{ font-size: 34px; font-weight: 700; color: #ffffff; }}
+        .step-desc {{ font-size: 25px; font-weight: 500; color: rgba(255,255,255,0.6); margin-top: 6px; }}
+    """
+    step_html = []
+    for i, s in enumerate(steps):
+        is_last = i == len(steps) - 1
+        connector = "" if is_last else '<div class="step-connector"></div>'
+        step_html.append(f'''
+            <div class="step">
+                <div class="step-num">{i + 1}</div>
+                {connector}
+                <div class="step-text">
+                    <div class="step-title">{(s.get("emoji") + " ") if s.get("emoji") else ""}{s["title"]}</div>
+                    <div class="step-desc">{s["desc"]}</div>
+                </div>
+            </div>
+        ''')
+    middle_html = f'<div class="steps">{"".join(step_html)}</div>'
+    html = _card_shell(hook, category, middle_html, extra_style=extra_style)
+    _screenshot(html, out_path)
 
 
 def render_card_image(hook: str, category: str, out_path: Path):
@@ -648,23 +850,38 @@ def build_raw_url(path: Path) -> str:
 def make_card_image_url(post: dict) -> str | None:
     """카드 이미지 생성 파이프라인.
 
-    1) 글에서 실제 수치 데이터 추출 시도 → 있으면 차트 카드
-    2) 없으면 기존 후킹 문구 카드로 폴백
+    1) 글 내용에 맞는 인포그래픽 형태(차트/숫자/비교표/단계) 추출 → 해당 카드로 렌더링
+    2) 어떤 형태도 못 만들면 기존 후킹 문구 카드로 폴백
     3) 렌더링 → 커밋/푸시 → 공개 URL 반환 (실패 시 None)
     """
     try:
         IMAGES_DIR.mkdir(exist_ok=True)
         filename = f"{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}.png"
         out_path = IMAGES_DIR / filename
+        category = post.get("category", "")
 
-        chart = extract_chart_data(post)
-        if chart:
-            print(f"차트 데이터 추출됨 ({chart['chart_type']}): {chart['labels']}")
-            render_data_card(chart["hook"], post.get("category", ""), chart, out_path)
-        else:
-            print("차트로 만들 데이터 없음 — 후킹 문구 카드로 폴백")
-            hook = generate_card_hook(post)
-            render_card_image(hook, post.get("category", ""), out_path)
+        visual = extract_visual_content(post)
+        rendered = False
+        if visual:
+            ctype = visual["content_type"]
+            print(f"카드 형태 선택됨: {ctype}")
+            try:
+                if ctype in ("bar", "line", "donut"):
+                    render_data_card(visual["hook"], category, visual, out_path)
+                elif ctype == "stat":
+                    render_stat_card(visual["hook"], category, visual, out_path)
+                elif ctype == "table":
+                    render_table_card(visual["hook"], category, visual, out_path)
+                elif ctype == "process":
+                    render_process_card(visual["hook"], category, visual, out_path)
+                rendered = out_path.exists()
+            except Exception as e:
+                print(f"인포그래픽 렌더링 실패(폴백 예정): {e}")
+
+        if not rendered:
+            print("인포그래픽으로 만들 내용 없음 — 후킹 문구 카드로 폴백")
+            hook = html.escape(generate_card_hook(post))
+            render_card_image(hook, category, out_path)
 
         if not commit_and_push_image(out_path):
             return None
