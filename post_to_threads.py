@@ -1,6 +1,7 @@
 import os
 import html
 import json
+import re
 import time
 import subprocess
 import feedparser
@@ -63,10 +64,13 @@ def fetch_rss() -> list:
         pub_date = None
         if hasattr(entry, "published_parsed") and entry.published_parsed:
             pub_date = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc).astimezone(KST).date()
+        # RSS에 &middot; 같은 HTML 기호와 태그가 섞여 오므로 순수 텍스트로 정리한 뒤 자르기
+        raw_summary = re.sub(r"<[^>]+>", " ", entry.get("summary", ""))
+        summary = re.sub(r"\s+", " ", html.unescape(raw_summary)).strip()
         posts.append({
-            "title":    entry.title,
+            "title":    html.unescape(entry.title),
             "link":     entry.link,
-            "summary":  entry.get("summary", "")[:800],
+            "summary":  summary[:800],
             "category": tags[0] if tags else "",
             "pub_date": pub_date,
         })
@@ -75,32 +79,33 @@ def fetch_rss() -> list:
 
 def generate_threads_post(post: dict) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = f"""아래 블로그 글을 스레드(Threads)에 올릴 홍보글로 작성해줘.
+    prompt = f"""아래 블로그 글의 핵심 내용을 바탕으로 스레드(Threads)에 올릴 글을 작성해줘.
 
 글 제목: {post['title']}
-글 링크: {post['link']}
 내용 요약: {post['summary']}
 
 스타일 가이드:
-- 광고글처럼 보이면 안 됨. 직장인이 퇴근 후 자연스럽게 공유하는 느낌으로
+- 직장인이 퇴근 후 알게 된 걸 친구에게 얘기하듯 자연스럽게. 홍보·광고 느낌 금지
 - "나도 처음엔 몰랐는데", "알고 보니", "생각보다" 같은 자연스러운 구어체 표현 활용
 - 독자가 "어? 이거 나 얘기네" 싶게 공감 포인트를 첫 문장에 넣기
 - 핵심 인사이트를 2~4문장으로 풀어서 설명 (단순 나열 금지)
-- 링크는 본문에 넣지 않음 (댓글에 따로 달 예정이므로 절대 URL을 포함하지 말 것)
+- 글 자체로 완결된 정보를 줄 것. 더 보라고 유도하지 말 것
 
 형식:
 1. 첫 줄: 공감 또는 궁금증을 유발하는 후킹 문장 (이모지 1개 포함)
 2. 본문: 핵심 내용을 이야기하듯 3~5문장으로 풀어서 설명
-3. 본문: URL 자체는 절대 쓰지 말 것
+3. 마무리: 내 생각 한마디 또는 독자에게 가볍게 묻는 질문 한 문장
 4. 해시태그: 2~3개 (맨 마지막)
+
+절대 금지 (하나라도 들어가면 안 됨):
+- URL, "링크", "프로필", "댓글", "블로그" 같은 단어
+- "정리해봤어요/정리해뒀어요", "올려뒀어요", "확인해보세요", "궁금하면" 같은 유도 문구
 
 조건:
 - 반드시 450자 이내 (띄어쓰기 포함, 이 조건 최우선)
 - 재테크/투자 관심 직장인 타깃
-- 절대 광고처럼 보이지 않게
-- 본문에 URL을 절대 포함하지 말 것 (링크는 별도로 댓글에 게시됨)
 
-홍보글만 출력해줘. 다른 말 없이."""
+본문만 출력해줘. 다른 말 없이."""
 
     msg = client.messages.create(
         model="claude-opus-4-5",
@@ -108,10 +113,30 @@ def generate_threads_post(post: dict) -> str:
         messages=[{"role": "user", "content": prompt}]
     )
 
-    text = msg.content[0].text.strip()
+    text = remove_link_mentions(msg.content[0].text.strip())
     if len(text) > 490:
         text = text[:490]
     return text
+
+
+# 본문에 남으면 광고처럼 보이거나 사실과 달라지는 표현 (링크는 댓글로 따로 달림)
+LINK_MENTION_WORDS = ("프로필", "링크", "댓글", "블로그", "http", "올려뒀", "올려놨", "올려놓", "정리해뒀", "정리해 뒀")
+
+
+def remove_link_mentions(text: str) -> str:
+    """프롬프트로 막았는데도 링크 유도 문장이 섞여 나오면 그 문장만 제거. 해시태그 줄은 건드리지 않음."""
+    cleaned_lines = []
+    for line in text.split("\n"):
+        if line.strip().startswith("#"):
+            cleaned_lines.append(line)
+            continue
+        sentences = re.split(r"(?<=[.!?~])\s+", line)
+        kept = [s for s in sentences if not any(w in s for w in LINK_MENTION_WORDS)]
+        if len(kept) != len(sentences):
+            print(f"링크 유도 문장 제거: {[s for s in sentences if s not in kept]}")
+        cleaned_lines.append(" ".join(kept))
+    # 문장 제거로 생긴 빈 줄이 3줄 이상 연달아 생기지 않게 정리
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(cleaned_lines)).strip()
 
 
 def generate_card_hook(post: dict) -> str:
