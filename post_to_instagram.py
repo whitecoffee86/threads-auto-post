@@ -233,7 +233,7 @@ NB_WORDS = ["S&amp;P 500", "S&amp;P500", "나스닥 100", "ISA 계좌", "연금�
 def t(s) -> str:
     """사용자 텍스트 → 안전한 HTML. 허용: <g>(강조), | 또는 <br>(줄바꿈).
     한국어 줄바꿈 보정: 숫자+단위·고유명사는 nowrap, 이모지는 앞 어절에 붙임."""
-    s = html.escape(str(s or ""))
+    s = html.escape(str(s or ""), quote=False)  # 따옴표는 그대로(엔티티 숫자가 단위 묶기에 걸리지 않게)
     s = re.sub(r"&lt;br\s*/?&gt;", "|", s)
     s = NUM_UNIT.sub(lambda m: '<span class="nb">' + m.group(1).replace(" ", "&nbsp;") + "</span>" if re.search(r"\d", m.group(1)) else m.group(1), s)
     for w in NB_WORDS:
@@ -314,7 +314,7 @@ tr.hl .g{color:var(--navy);background:rgba(255,255,255,.6)}
 .num{width:72px;height:72px;border-radius:50%;background:var(--gold);color:var(--navy);font-weight:900;font-size:36px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 5px 0 #8a7238}
 .bn{display:inline-block;align-self:flex-start;font-size:190px;font-weight:900;color:var(--navy);background:var(--yel);letter-spacing:-.04em;line-height:1.05;margin-top:50px;padding:6px 32px 14px;border-radius:28px;box-shadow:0 14px 0 var(--gold)}
 .qm{position:absolute;right:20px;bottom:120px;height:340px;filter:drop-shadow(0 14px 20px rgba(0,0,0,.4))}
-.qe{position:absolute;right:50px;top:140px;height:240px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
+.qe{position:absolute;right:60px;top:180px;height:230px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
 .sum{margin-top:40px;background:var(--cream);color:var(--navy);border-radius:32px;padding:34px 40px;box-shadow:0 14px 40px rgba(0,0,0,.3)}
 .sum .h{font-size:30px;font-weight:900;color:#8a7238}
 .sum li{list-style:none;font-size:40px;font-weight:800;line-height:1.4;margin-top:16px;display:flex;gap:14px}
