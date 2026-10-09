@@ -184,6 +184,7 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 
 [쉬운 말 규칙]
 - 금지 용어(쓰지 말고 풀어쓴다): 레버리지, 듀레이션, 과세표준, 손익분기, 순자산, 원천징수, 종합과세, 배분, 시나리오, 편차, 평가액, 비대칭, 리밸런싱, 분할매수, 권리락, 인적분할, 환헤지 등.
+  상품명·은어(SGOV, 달러 파킹, 직투, 빚투 등)도 처음 나올 때 풀이한다.
   꼭 필요한 용어(ETF, 배당, 금리 정도)는 처음 나올 때 괄호로 한 줄 풀이: "ETF(여러 회사를 한 바구니에 담은 상품)".
 - 숫자는 캐러셀 전체에서 핵심 숫자 3~4개만. 한 장에 숫자 최대 2개. 큰 금액은 체감되게 바꿔 쓸 수 있다(원문 숫자 그대로 쓸 것, 새 계산 금지).
 - 비율 표기(50:50, 30:70) 금지 → "반반", "10만원 중 7만원은 ~".
@@ -202,7 +203,7 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
  "cover": {"badge": "카테고리 + 이모지", "context": "누구 얘기인지 일상어로 한 줄(최대 30자, 예: 대출 있는 직장인이 월급 남는 돈을 어디에 쓸지)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "핵심 숫자/한마디 최대 6자", "sub": "| 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 한마디 최대 10자", "save_sticker": true/false},
  "slides": [  // 정확히 4개, 첫 번째는 bignum
    {"type": "bignum", "badge": "💡 결론부터", "title": "| 로 2줄", "value": "최대 6자", "label": "이 숫자가 뭔지 일상어로", "body": "1~2줄", "quokka": "쿼카 키"},
-   {"type": "chat", "badge": "...", "title": "| 로 2줄", "lines": [{"who": "me", "text": "초보 독자의 솔직한 질문(최대 30자)"}, {"who": "quokka", "text": "쿼카의 쉬운 답(최대 40자)"}]},  // 3~5개 말풍선, me로 시작
+   {"type": "chat", "badge": "...", "title": "| 로 2줄", "lines": [{"who": "me", "text": "초보 독자의 솔직한 질문(최대 30자)"}, {"who": "quokka", "text": "쿼카의 쉬운 답(최대 40자)"}]},  // 3~5개 말풍선, me로 시작해서 반드시 quokka 답으로 끝낸다(질문으로 끝내지 않기)
    {"type": "cards", "badge": "...", "title": "...", "items": [{"icon": "이모지", "title": "최대 16자", "desc": "최대 30자, 일상어"}]},  // 2~3개
    {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "최대 16자", "desc": "최대 30자"}]},  // 3개, '오늘 해볼 것' 같은 행동 위주
    {"type": "compare", "badge": "...", "title": "...", "left": {"label": "", "value": "최대 6자", "points": ["✅/❌ 짧은 줄"]}, "right": {...}, "body": "1줄", "quokka": "쿼카 키(선택)"},
@@ -226,7 +227,8 @@ REVIEW_PROMPT = """너는 아래 독자 본인이다: {reader}
 인스타 캐러셀 JSON을 1장부터 순서대로 읽어 보고, 네가 이해 못 하거나 지루해서 넘기다 멈출 곳을 모두 고쳐라.
 
 점검:
-1. 모르는 단어가 하나라도 있나? → 일상어로 바꾸거나 괄호 풀이.
+1. 모르는 단어가 하나라도 있나(상품명·은어 포함)? → 일상어로 바꾸거나 처음 나올 때 괄호 풀이.
+1-1. 대화형(chat)이 질문으로 끝나면 쿼카 답을 붙인다.
 2. 한 장에 숫자가 2개를 넘나? → 줄인다. 무슨 숫자인지 바로 알 수 있나?
 3. 1장만 봐도 "내 얘기다" 싶은가? 2장만 봐도 결론이 보이나?
 4. 말투가 친한 선배 카톡처럼 편한가? 딱딱하거나 가르치는 말투면 고친다.
@@ -425,7 +427,7 @@ def foot(last=False) -> str:
 
 
 def ctx_chip(c) -> str:
-    return f'<div class="ctx"><b>📌 조건</b><span>{t(c.get("context"))}</span></div>' if c.get("context") else ""
+    return f'<div class="ctx"><b>👋 이런 분께</b><span>{t(c.get("context"))}</span></div>' if c.get("context") else ""
 
 
 def slide_cover(c, n, total) -> str:
@@ -473,7 +475,10 @@ def slide_body(s) -> str:
     if ty == "chat":
         av = quokka_img("phone_up_smile", "av")
         out = '<div class="chat">'
-        for ln in (s.get("lines") or [])[:5]:
+        lines = (s.get("lines") or [])[:5]
+        while lines and lines[-1].get("who") == "me":
+            lines = lines[:-1]
+        for ln in lines:
             if ln.get("who") == "me":
                 out += f'<div class="msg me"><span class="bub">{t(ln.get("text"))}</span></div>'
             else:
