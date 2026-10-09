@@ -1,0 +1,66 @@
+name: 티스토리 → 인스타 캐러셀 자동 발행
+
+on:
+  schedule:
+    - cron: '47 11 * * *'   # 매일 오후 8시 47분 KST
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '테스트 모드 (이미지만 만들고 업로드 안 함)'
+        type: boolean
+        default: true
+      post_url:
+        description: '특정 티스토리 글 URL (비우면 자동 선택)'
+        required: false
+        default: ''
+
+concurrency:
+  group: repo-push
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 패키지·한글 폰트 설치
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-color-emoji
+          pip install anthropic feedparser requests playwright cryptography
+          playwright install --with-deps chromium
+
+      - name: git 설정
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+      - name: 캐러셀 생성·발행
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+          IG_POST_URL: ${{ inputs.post_url }}
+        run: python post_to_instagram.py
+
+      - name: 테스트 결과 이미지 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carousel
+          path: ig_images/
+          if-no-files-found: ignore
+
+      - name: 발행 기록·토큰 저장
+        if: always() && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
+        run: |
+          git add instagram_history.json
+          [ -f ig_token.enc ] && git add ig_token.enc
+          git diff --staged --quiet || git commit -m "인스타 발행 기록 업데이트"
+          git pull --rebase origin main && git push
