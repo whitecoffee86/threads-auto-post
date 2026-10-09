@@ -459,7 +459,7 @@ def render(spec: dict, out_dir: Path) -> list[Path]:
 def push_images(paths: list[Path]) -> list[str]:
     subprocess.run(["git", "add", *map(str, paths)], check=True)
     subprocess.run(["git", "commit", "-m", f"인스타 캐러셀 이미지: {paths[0].parent.name}"], check=True)
-    subprocess.run(["git", "pull", "--rebase", "origin", BRANCH], check=True)
+    subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", BRANCH], check=True)
     subprocess.run(["git", "push"], check=True)
     urls = [f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/{p.as_posix()}" for p in paths]
     for u in urls:  # raw 서버에 반영될 때까지 대기
