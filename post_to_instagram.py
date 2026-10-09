@@ -166,7 +166,12 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 [절대 규칙]
 - 숫자·사실은 반드시 본문에 있는 것만 쓴다. 새 숫자를 지어내거나 계산하지 않는다.
 - 특정 상품 매수 권유처럼 보이는 문장 금지. 기록·정리 톤.
-- 짧게. 한 장에 메시지 하나. 본문 장은 제목 포함 90자 이내.
+- 독자는 이 글을 처음 보는 직장인이다. 원문을 안 읽어도 이해돼야 한다. 압축보다 이해가 먼저.
+- 모든 숫자는 "무엇의 얼마인지" 같은 장 안에서 알 수 있게 쓴다(예: "−2,265만" ✕ → "투자 수익률이 2%면 −2,265만원" ○).
+- 비율·약어는 풀어 쓴다: "50:50" ✕ → "상환 50 : 투자 50" ○, "상환100" ✕ → "전부 상환" ○. 전문용어(레버리지, 손익분기, 과세표준 등)는 쉬운 말로 바꾸거나 괄호로 한 번 풀어 준다.
+- "맞으면/틀리면", "A일 때/B일 때"처럼 조건을 쓸 땐 그 조건이 무엇인지 반드시 같은 장에 적는다.
+- 슬라이드가 이야기처럼 이어지게: 상황(누가·얼마로·어떤 조건) → 결론 → 근거(표/그래프) → 해석 → 요약.
+- 한 장에 메시지 하나. 본문 장은 제목 포함 120자 이내.
 - 핵심 숫자/단어는 <g>...</g>로 강조(한 문장에 최대 1~2개).
 - 줄바꿈은 | 로 직접 표시한다. 의미 단위로 끊는다: 쉼표·물음표 뒤 → 조사(은/는/이/가/을/를/에/의/로)·연결어미(-고/-면/-서/-지만)로 끝나는 어절 뒤. 숫자와 그 숫자가 꾸미는 명사, 꾸밈말과 명사 사이는 끊지 않는다. 각 줄 길이는 비슷하게.
 - 이모지는 배지에 1개, 항목 아이콘에 1개까지만.
@@ -179,20 +184,20 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 
 [출력: JSON만, 코드블록 없이]
 {
- "cover": {"badge": "카테고리명 + 이모지", "title": "훅, | 로 2~3줄, 최대 20자", "big": "가장 강한 숫자/결론, 최대 6자", "sub": "부연, | 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 감탄 한마디 최대 8자", "save_sticker": true/false (체크리스트·요약·표처럼 저장할 가치가 큰 글이면 true)},
+ "cover": {"badge": "카테고리명 + 이모지", "context": "이 글의 상황·조건 한 줄, 최대 36자 (예: 월 100만원 · 대출 5,900만원(금리 5.5%) · 10년)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "가장 강한 숫자/결론, 최대 6자", "sub": "부연, | 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 감탄 한마디 최대 8자", "save_sticker": true/false (체크리스트·요약·표처럼 저장할 가치가 큰 글이면 true)},
  "slides": [  // 정확히 4개, 첫 번째는 bignum
    {"type": "bignum", "badge": "💡 결론부터", "title": "| 로 2줄 이내", "value": "결론 숫자 최대 6자", "label": "숫자 설명 한 줄", "body": "이유 1~2줄", "quokka": "쿼카 키"},
-   {"type": "table", "badge": "...", "title": "...", "headers": ["", "", ""], "rows": [["", "", ""]], "highlight": 행번호(0부터, 없으면 -1), "note": "※ 계산 근거 한 줄"},
-   {"type": "bars", "badge": "...", "title": "...", "sub": "...", "items": [{"label": "최대 7자", "value": 숫자(손실·하락은 음수), "display": "표시 문자열"}], "takeaway": "👉 한 줄"},
-   {"type": "cards", "badge": "...", "title": "...", "items": [{"icon": "이모지", "title": "최대 14자", "desc": "최대 24자"}]},   // 2~3개
+   {"type": "table", "badge": "...", "title": "...", "explain": "👀 이 표 읽는 법 한 줄(최대 40자)", "headers": ["", "", ""], "rows": [["", "", ""]], "highlight": 행번호(0부터, 없으면 -1), "note": "※ 계산 근거 한 줄"},
+   {"type": "bars", "badge": "...", "title": "...", "sub": "무엇을 비교한 그래프인지 한 줄", "items": [{"label": "최대 10자, 약어 금지", "value": 숫자(손실·하락은 음수), "display": "표시 문자열"}], "takeaway": "👉 한 줄"},
+   {"type": "cards", "badge": "...", "title": "...", "items": [{"icon": "이모지", "title": "최대 16자", "desc": "최대 32자, 완결된 문장"}]},   // 2~3개
    {"type": "compare", "badge": "...", "title": "...", "left": {"label": "", "value": "최대 6자", "points": ["✅/❌로 시작하는 짧은 줄", "..."]}, "right": {...같은 형식}, "body": "1줄", "quokka": "쿼카 키(선택)"},
-   {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "최대 14자", "desc": "최대 24자"}]}  // 3~4개
+   {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "최대 16자", "desc": "최대 32자, 완결된 문장"}]}  // 3~4개
  ],
  "closing": {"badge": "🌿 WhiteCoffee의 관점", "title": "| 로 2줄 이내, 필자의 관점 한마디", "summary": ["요약 1(최대 22자)", "요약 2", "요약 3"], "quokka": "쿼카 키(표지와 다른 것)"},
  "caption": "인스타 본문(일반 줄바꿈 \\n). 1줄 훅 + 핵심 2~3줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💌 ~한 동료에게 보내주세요' + '💬 댓글을 부르는 질문 1개' (해시태그·링크 금지, 400자 이내)",
  "hashtags": ["#태그", "..."]   // 5~8개, 검색량 있는 한국어/종목 태그
 }
-표(table): 최대 4행 4열, 각 칸 8자 이내(긴 설명은 cards로). bars: 3~5개. compare points: 각 0~3줄.
+표(table): 최대 4행 4열, 각 칸 10자 이내, 머리글은 조건을 풀어서(예: "7%일 때" ✕ → "투자 수익 7%" ○). bars: 3~5개. compare points: 각 0~3줄.
 쿼카 키 목록(내용 분위기에 맞게, 놀람·뿌듯·걱정·설명 중 주제에 맞는 표정): {quokkas}
 
 [블로그 글]
@@ -201,6 +206,45 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 본문:
 {body}
 """
+
+
+REVIEW_PROMPT = """너는 재테크 콘텐츠를 처음 보는 30대 직장인 독자이자 편집자다.
+아래 인스타 캐러셀 JSON을 원문 없이 1장부터 순서대로 읽는다고 상상하고, 이해가 막히는 곳을 모두 고쳐라.
+
+점검 목록:
+1. 상황·조건(누가, 얼마로, 언제까지, 어떤 가정)이 1~2장 안에 나오는가? 없으면 cover.context를 채운다.
+2. 모든 숫자가 "무엇의 얼마"인지 그 장 안에서 알 수 있는가?
+3. 약어·비율 표기(50:50, 30:70, 상환100 등)가 무엇:무엇인지 풀려 있는가?
+4. 전문용어가 쉬운 말로 되어 있는가?
+5. "맞으면/틀리면", "~일 때" 같은 조건이 정의돼 있는가?
+6. 장과 장이 이야기처럼 이어지는가(갑자기 새 개념이 튀어나오지 않는가)?
+7. 숫자는 원문에 있는 것만 썼는가? (원문에 없는 숫자는 삭제)
+
+규칙: 같은 JSON 구조·키를 유지하고, 길이 제한(각 필드 설명)을 지키며, | 줄바꿈과 <g> 강조 규칙도 유지한다.
+고친 전체 JSON만 출력한다(설명·코드블록 없이).
+
+[원문 요약용 본문]
+{body}
+
+[캐러셀 JSON]
+{spec}
+"""
+
+
+def review_spec(spec: dict, body: str) -> dict:
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    prompt = REVIEW_PROMPT.replace("{body}", body[:9000]).replace("{spec}", json.dumps(spec, ensure_ascii=False, indent=1))
+    try:
+        msg = client.messages.create(model=MODEL, max_tokens=5000, messages=[{"role": "user", "content": prompt}])
+        raw = msg.content[0].text.strip()
+        fixed = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
+        assert fixed["cover"] and len(fixed["slides"]) >= 3 and fixed["closing"] and fixed["caption"]
+        fixed["slides"] = fixed["slides"][:4]
+        print("첫 독자 검토 반영 완료")
+        return fixed
+    except Exception as e:
+        print(f"검토 단계 실패(원안 사용): {e}")
+        return spec
 
 
 def build_spec(title: str, category: str, body: str) -> dict:
@@ -320,6 +364,9 @@ tr.hl .g{color:var(--navy);background:rgba(255,255,255,.6)}
 .sum li{list-style:none;font-size:40px;font-weight:800;line-height:1.4;margin-top:16px;display:flex;gap:14px}
 .sum .g{color:var(--navy);background:linear-gradient(transparent 60%,rgba(255,215,106,.85) 60%)}
 .send{margin-top:40px;align-self:flex-start;background:var(--yel);color:var(--navy);font-weight:900;font-size:46px;padding:22px 36px;border-radius:40px;box-shadow:0 8px 0 var(--gold)}
+.ctx{display:inline-flex;align-self:flex-start;gap:12px;align-items:center;margin-top:30px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:14px 22px;font-size:30px;font-weight:700;color:var(--txt);max-width:920px;line-height:1.4}
+.ctx b{color:var(--gold);white-space:nowrap}
+.how{margin-top:20px;font-size:32px;font-weight:700;color:var(--yel);line-height:1.45}
 .mini{margin-top:22px;font-size:32px;font-weight:700;color:var(--txt)}
 """
 
@@ -349,12 +396,16 @@ def foot(last=False) -> str:
     return f'<div class="foot"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사 <b>@ayunfafa</b>{sw}</div>'
 
 
+def ctx_chip(c) -> str:
+    return f'<div class="ctx"><b>📌 조건</b><span>{t(c.get("context"))}</span></div>' if c.get("context") else ""
+
+
 def slide_cover(c, n, total) -> str:
     q = quokka_img(c.get("quokka") or "pointer_explain", "qc")
     bubble = f'<div class="bubble">{t(plain(c.get("bubble")))}</div>' if q and c.get("bubble") else ""
     sticker = '<span class="sticker">📌 저장 필수</span>' if c.get("save_sticker") else ""
     return (f'<section class="s">{top(c.get("badge"), n, total)}{sticker}'
-            f'<div class="bd" style="max-width:920px"><h1 style="{_fit(c.get("title"), 104, 10)}">{t(c.get("title"))}</h1>'
+            f'<div class="bd" style="max-width:920px">{ctx_chip(c)}<h1 style="{_fit(c.get("title"), 104, 10)}">{t(c.get("title"))}</h1>'
             f'<div class="big" style="{_fit(c.get("big"), 170, 5)}">{t(plain(c.get("big")))}</div>'
             f'<p class="sub" style="max-width:600px">{t(c.get("sub"))}</p></div>{q}{bubble}{foot()}</section>')
 
@@ -373,7 +424,8 @@ def slide_body(s) -> str:
             f'<tr class="{"hl" if i == hl else ""}">'
             + "".join(f'<td{" class=nw" if len(plain(x)) <= 6 else ""}>{t(x)}</td>' for x in r) + "</tr>"
             for i, r in enumerate(s.get("rows", [])[:4]))
-        return f'<table{tstyle}><tr>{head}</tr>{rows}</table><p class="note">{t(s.get("note"))}</p>'
+        how = f'<p class="how">{t(s.get("explain"))}</p>' if s.get("explain") else ""
+        return f'{how}<table{tstyle}><tr>{head}</tr>{rows}</table><p class="note">{t(s.get("note"))}</p>'
     if ty == "bars":
         items = s.get("items", [])[:5]
         vals = [float(i.get("value") or 0) for i in items] or [0]
@@ -519,7 +571,7 @@ def main():
     title = post["title"] or title
     print(f"선택된 글: {title}\n{post['link']}")
 
-    spec = build_spec(title, post["category"], body)
+    spec = review_spec(build_spec(title, post["category"], body), body)
     cap = re.sub(r"<br\s*/?>", "\n", spec["caption"]).replace("<g>", "").replace("</g>", "")
     caption = re.sub(r"\n{3,}", "\n\n", cap).strip() + "\n\n" + " ".join(spec.get("hashtags", [])[:8])
     stamp = datetime.now(KST).strftime("%Y%m%d_%H%M")
