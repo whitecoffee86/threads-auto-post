@@ -135,10 +135,20 @@ def pick_post(h: dict) -> dict | None:
                 return p
         return {"title": "", "link": FORCE_URL, "category": ""}
     done = set(h.get("posted", []))
-    for p in posts:  # RSS는 최신순 → 아직 안 올린 가장 최근 글
-        if p["category"] not in SKIP_CATEGORIES and p["link"] not in done:
-            return p
-    return None
+    cands = [p for p in posts if p["category"] not in SKIP_CATEGORIES and p["link"] not in done][:8]
+    if len(cands) <= 1:
+        return cands[0] if cands else None
+    try:  # 초보 독자에게 가장 가까운 글을 고른다
+        items = "\n".join(f"{i + 1}. [{p['category']}] {p['title']}" for i, p in enumerate(cands))
+        msg = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY).messages.create(
+            model=MODEL, max_tokens=10,
+            messages=[{"role": "user", "content": PICK_PROMPT.replace("{reader}", READER).replace("{items}", items)}])
+        k = int(re.search(r"\d+", msg.content[0].text).group()) - 1
+        if 0 <= k < len(cands):
+            return cands[k]
+    except Exception as e:
+        print(f"글 선택 AI 실패(최신 글 사용): {e}")
+    return cands[0]
 
 
 def fetch_article_text(url: str) -> tuple[str, str]:
@@ -160,47 +170,50 @@ def fetch_article_text(url: str) -> tuple[str, str]:
 
 
 # ─── Claude: 슬라이드 구성 ─────────────────────────
-PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에디터다. 아래 블로그 글을 1080×1350 캐러셀 6장으로 재구성한다.
-화자는 직장인 투자자 'WhiteCoffee'와 캐릭터 '주식농부쿼카'. 친한 선배가 숫자로 솔직하게 알려주는 톤.
+READER = "주식은 앱만 깔아뒀거나 거의 안 해본 2030 여성 직장인. 월급·적금·카드값·커피값은 익숙하지만 ETF·세금·금리 용어는 낯설다."
 
-[절대 규칙]
-- 숫자·사실은 반드시 본문에 있는 것만 쓴다. 새 숫자를 지어내거나 계산하지 않는다.
-- 특정 상품 매수 권유처럼 보이는 문장 금지. 기록·정리 톤.
-- 독자는 이 글을 처음 보는 직장인이다. 원문을 안 읽어도 이해돼야 한다. 압축보다 이해가 먼저.
-- 쉽게쉽게. 재테크를 막 시작한 친구에게 카톡으로 설명하듯 쓴다. 한 문장에 숫자는 1~2개만, 어려운 개념은 일상 비유로(예: 대출 상환 = "확실히 5.5% 버는 적금").
-- 숫자가 많은 표·그래프는 캐러셀 전체에서 최대 2장. 나머지는 쉬운 말과 카드로.
-- 모든 숫자는 "무엇의 얼마인지" 같은 장 안에서 알 수 있게 쓴다(예: "−2,265만" ✕ → "투자 수익률이 2%면 −2,265만원" ○).
-- 비율·약어는 풀어 쓴다: "50:50" ✕ → "상환 50 : 투자 50" ○, "상환100" ✕ → "전부 상환" ○. 전문용어(레버리지, 손익분기, 과세표준 등)는 쉬운 말로 바꾸거나 괄호로 한 번 풀어 준다.
-- "맞으면/틀리면", "A일 때/B일 때"처럼 조건을 쓸 땐 그 조건이 무엇인지 반드시 같은 장에 적는다.
-- 슬라이드가 이야기처럼 이어지게: 상황(누가·얼마로·어떤 조건) → 결론 → 근거(표/그래프) → 해석 → 요약.
-- 한 장에 메시지 하나. 본문 장은 제목 포함 120자 이내.
-- 핵심 숫자/단어는 <g>...</g>로 강조(한 문장에 최대 1~2개).
-- 줄바꿈은 | 로 직접 표시한다. 의미 단위로 끊는다: 쉼표·물음표 뒤 → 조사(은/는/이/가/을/를/에/의/로)·연결어미(-고/-면/-서/-지만)로 끝나는 어절 뒤. 숫자와 그 숫자가 꾸미는 명사, 꾸밈말과 명사 사이는 끊지 않는다. 각 줄 길이는 비슷하게.
-- 이모지는 배지에 1개, 항목 아이콘에 1개까지만.
+PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에디터다.
+[독자] {reader}
+이 독자가 피드를 내리다 멈추고 "어? 나도 해당되나?" 하고 끝까지 넘겨 보게 만드는 6장 캐러셀을 만든다.
+
+[핵심 방침: 요약하지 말고, 한 가지만 쉽게]
+- 블로그 글은 어렵다. 글 전체를 요약하지 않는다. 이 독자에게 가장 와닿는 "오 그렇구나" 포인트 딱 하나만 골라 그것만 쉽게 설명한다.
+- 글의 나머지 디테일(세부 계산, 예외, 여러 시나리오)은 과감히 버린다. 궁금한 사람은 프로필 링크로 가면 된다.
+- 일상 상황으로 시작한다(월급날, 적금 만기, 카드값, 해외여행 환전, 연말정산, 커피 한 잔 값 등).
+- 말투: 친한 언니/선배가 카톡하듯 친근한 존댓말("~해요", "~거든요"). 훈계·전문가 톤 금지.
+
+[쉬운 말 규칙]
+- 금지 용어(쓰지 말고 풀어쓴다): 레버리지, 듀레이션, 과세표준, 손익분기, 순자산, 원천징수, 종합과세, 배분, 시나리오, 편차, 평가액, 비대칭, 리밸런싱, 분할매수, 권리락, 인적분할, 환헤지 등.
+  꼭 필요한 용어(ETF, 배당, 금리 정도)는 처음 나올 때 괄호로 한 줄 풀이: "ETF(여러 회사를 한 바구니에 담은 상품)".
+- 숫자는 캐러셀 전체에서 핵심 숫자 3~4개만. 한 장에 숫자 최대 2개. 큰 금액은 체감되게 바꿔 쓸 수 있다(원문 숫자 그대로 쓸 것, 새 계산 금지).
+- 비율 표기(50:50, 30:70) 금지 → "반반", "10만원 중 7만원은 ~".
+- 문장은 짧게, 한 줄 16자 안팎. 줄바꿈은 | 로 의미 단위로.
+- 숫자·사실은 반드시 본문에 있는 것만. 투자 권유처럼 들리는 말 금지("사세요" ✕ → "저는 이렇게 해요" ○).
 
 [구성]
-1장 cover: 숫자+물음표 훅이 기본("월 30만원으로|10년 뒤 5,000만원?" 같은 식).
-2장 = slides[0]: 반드시 type "bignum", badge "💡 결론부터". 캐러셀을 안 넘긴 사람에게 인스타가 2장을 다시 보여주므로, 이 장만 봐도 결론이 이해돼야 한다.
-3~5장 = slides[1..3]: 내용에 맞는 형태를 골라 서로 다르게(같은 type 반복 금지).
-6장 closing: 3줄 요약(저장할 이유가 되는 장).
+1장 cover: 독자 일상 속 질문형 훅. (예: "월급 남는 돈,|대출 먼저 갚을까?")
+2장 = slides[0]: type "bignum", badge "💡 결론부터". 안 넘긴 사람에게 인스타가 2장을 다시 보여주므로 이 장만 봐도 결론이 보이게.
+3~5장 = slides[1..3]: 아래 type 중 골라 서로 다르게. 초보에게는 chat(대화형)과 cards가 가장 잘 읽힌다. 표(table)·막대(bars)는 꼭 필요할 때만, 최대 1장.
+6장 closing: 3줄 요약(저장할 이유).
 
 [출력: JSON만, 코드블록 없이]
 {
- "cover": {"badge": "카테고리명 + 이모지", "context": "이 글의 상황·조건 한 줄, 최대 36자 (예: 월 100만원 · 대출 5,900만원(금리 5.5%) · 10년)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "가장 강한 숫자/결론, 최대 6자", "sub": "부연, | 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 감탄 한마디 최대 10자", "save_sticker": true/false (체크리스트·요약·표처럼 저장할 가치가 큰 글이면 true)},
+ "point": "이번 캐러셀이 전달할 단 하나의 포인트(내부용, 한 문장)",
+ "cover": {"badge": "카테고리 + 이모지", "context": "누구 얘기인지 일상어로 한 줄(최대 30자, 예: 대출 있는 직장인이 월급 남는 돈을 어디에 쓸지)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "핵심 숫자/한마디 최대 6자", "sub": "| 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 한마디 최대 10자", "save_sticker": true/false},
  "slides": [  // 정확히 4개, 첫 번째는 bignum
-   {"type": "bignum", "badge": "💡 결론부터", "title": "| 로 2줄 이내", "value": "결론 숫자 최대 6자", "label": "숫자 설명 한 줄", "body": "이유 1~2줄", "quokka": "쿼카 키"},
-   {"type": "table", "badge": "...", "title": "...", "explain": "👀 이 표 읽는 법 한 줄(최대 40자)", "headers": ["", "", ""], "rows": [["", "", ""]], "highlight": 행번호(0부터, 없으면 -1), "note": "※ 계산 근거 한 줄"},
-   {"type": "bars", "badge": "...", "title": "...", "sub": "무엇을 비교한 그래프인지 한 줄", "items": [{"label": "최대 10자, 약어 금지", "value": 숫자(손실·하락은 음수), "display": "표시 문자열"}], "takeaway": "👉 한 줄"},
-   {"type": "cards", "badge": "...", "title": "...", "items": [{"icon": "이모지", "title": "최대 16자", "desc": "최대 32자, 완결된 문장"}]},   // 2~3개
-   {"type": "compare", "badge": "...", "title": "...", "left": {"label": "", "value": "최대 6자", "points": ["✅/❌로 시작하는 짧은 줄", "..."]}, "right": {...같은 형식}, "body": "1줄", "quokka": "쿼카 키(선택)"},
-   {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "최대 16자", "desc": "최대 32자, 완결된 문장"}]}  // 3~4개
+   {"type": "bignum", "badge": "💡 결론부터", "title": "| 로 2줄", "value": "최대 6자", "label": "이 숫자가 뭔지 일상어로", "body": "1~2줄", "quokka": "쿼카 키"},
+   {"type": "chat", "badge": "...", "title": "| 로 2줄", "lines": [{"who": "me", "text": "초보 독자의 솔직한 질문(최대 30자)"}, {"who": "quokka", "text": "쿼카의 쉬운 답(최대 40자)"}]},  // 3~5개 말풍선, me로 시작
+   {"type": "cards", "badge": "...", "title": "...", "items": [{"icon": "이모지", "title": "최대 16자", "desc": "최대 30자, 일상어"}]},  // 2~3개
+   {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "최대 16자", "desc": "최대 30자"}]},  // 3개, '오늘 해볼 것' 같은 행동 위주
+   {"type": "compare", "badge": "...", "title": "...", "left": {"label": "", "value": "최대 6자", "points": ["✅/❌ 짧은 줄"]}, "right": {...}, "body": "1줄", "quokka": "쿼카 키(선택)"},
+   {"type": "table", "badge": "...", "title": "...", "explain": "👀 읽는 법 한 줄", "headers": ["",""], "rows": [["",""]], "highlight": -1, "note": "※ 근거"},  // 최대 3행 3열
+   {"type": "bars", "badge": "...", "title": "...", "sub": "무엇을 비교했는지", "items": [{"label": "최대 10자", "value": 숫자, "display": ""}], "takeaway": "👉 한 줄"}  // 최대 4개
  ],
- "closing": {"badge": "🌿 WhiteCoffee의 관점", "title": "| 로 2줄 이내, 필자의 관점 한마디", "summary": ["요약 1(최대 22자)", "요약 2", "요약 3"], "quokka": "쿼카 키(표지와 다른 것)"},
- "caption": "인스타 본문(일반 줄바꿈 \\n). 1줄 훅 + 핵심 2~3줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💌 ~한 동료에게 보내주세요' + '💬 댓글을 부르는 질문 1개' (해시태그·링크 금지, 400자 이내)",
- "hashtags": ["#태그", "..."]   // 5~8개, 검색량 있는 한국어/종목 태그
+ "closing": {"badge": "🌿 WhiteCoffee의 한마디", "title": "| 로 2줄", "summary": ["요약 1(최대 20자)", "요약 2", "요약 3"], "quokka": "쿼카 키(표지와 다른 것)"},
+ "caption": "인스타 본문(\\n 줄바꿈). 공감 한 줄 + 핵심 2줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💌 ~한 친구에게 보내주세요' + '💬 가볍게 답할 수 있는 질문' (해시태그·링크 금지, 350자 이내)",
+ "hashtags": ["#태그"]  // 5~8개, 초보가 검색할 만한 말(#재테크초보 #월급관리 #사회초년생재테크 등 포함)
 }
-표(table): 최대 4행 4열, 각 칸 10자 이내, 머리글은 조건을 풀어서(예: "7%일 때" ✕ → "투자 수익 7%" ○). bars: 3~5개. compare points: 각 0~3줄.
-쿼카 키 목록(내용 분위기에 맞게, 놀람·뿌듯·걱정·설명 중 주제에 맞는 표정): {quokkas}
+쿼카 키 목록(놀람·뿌듯·걱정·설명 중 맞는 표정): {quokkas}
 
 [블로그 글]
 제목: {title}
@@ -209,33 +222,37 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 {body}
 """
 
+REVIEW_PROMPT = """너는 아래 독자 본인이다: {reader}
+인스타 캐러셀 JSON을 1장부터 순서대로 읽어 보고, 네가 이해 못 하거나 지루해서 넘기다 멈출 곳을 모두 고쳐라.
 
-REVIEW_PROMPT = """너는 재테크 콘텐츠를 처음 보는 30대 직장인 독자이자 편집자다.
-아래 인스타 캐러셀 JSON을 원문 없이 1장부터 순서대로 읽는다고 상상하고, 이해가 막히는 곳을 모두 고쳐라.
+점검:
+1. 모르는 단어가 하나라도 있나? → 일상어로 바꾸거나 괄호 풀이.
+2. 한 장에 숫자가 2개를 넘나? → 줄인다. 무슨 숫자인지 바로 알 수 있나?
+3. 1장만 봐도 "내 얘기다" 싶은가? 2장만 봐도 결론이 보이나?
+4. 말투가 친한 선배 카톡처럼 편한가? 딱딱하거나 가르치는 말투면 고친다.
+5. 블로그 디테일을 너무 많이 넣지 않았나? 포인트 하나(point)에 집중하도록 덜어낸다.
+6. 숫자는 원문에 있는 것만인가? 원문에 없는 숫자는 삭제.
 
-점검 목록:
-1. 상황·조건(누가, 얼마로, 언제까지, 어떤 가정)이 1~2장 안에 나오는가? 없으면 cover.context를 채운다.
-2. 모든 숫자가 "무엇의 얼마"인지 그 장 안에서 알 수 있는가?
-3. 약어·비율 표기(50:50, 30:70, 상환100 등)가 무엇:무엇인지 풀려 있는가?
-4. 전문용어가 쉬운 말로 되어 있는가? 친구에게 카톡으로 설명하듯 쉬운가? 한 문장에 숫자가 3개 이상이면 나눈다.
-5. "맞으면/틀리면", "~일 때" 같은 조건이 정의돼 있는가?
-6. 장과 장이 이야기처럼 이어지는가(갑자기 새 개념이 튀어나오지 않는가)?
-7. 숫자는 원문에 있는 것만 썼는가? (원문에 없는 숫자는 삭제)
+같은 JSON 구조·키·길이 제한, | 줄바꿈, <g> 강조 규칙을 유지하고 고친 전체 JSON만 출력한다(설명·코드블록 없이).
 
-규칙: 같은 JSON 구조·키를 유지하고, 길이 제한(각 필드 설명)을 지키며, | 줄바꿈과 <g> 강조 규칙도 유지한다.
-고친 전체 JSON만 출력한다(설명·코드블록 없이).
-
-[원문 요약용 본문]
+[원문 본문]
 {body}
 
 [캐러셀 JSON]
 {spec}
 """
 
+PICK_PROMPT = """아래는 아직 인스타에 안 올린 블로그 글 목록이다. 독자: {reader}
+이 독자가 피드에서 보고 "어? 나도 궁금했는데" 하고 멈출 만한, 일상과 가장 가까운 글 1개를 골라 번호만 답하라.
+(세금 신고 세부, 기업 구조 변경, 채권 계산처럼 초보에게 먼 주제는 뒤로.)
+
+{items}
+"""
+
 
 def review_spec(spec: dict, body: str) -> dict:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = REVIEW_PROMPT.replace("{body}", body[:9000]).replace("{spec}", json.dumps(spec, ensure_ascii=False, indent=1))
+    prompt = REVIEW_PROMPT.replace("{reader}", READER).replace("{body}", body[:9000]).replace("{spec}", json.dumps(spec, ensure_ascii=False, indent=1))
     try:
         msg = client.messages.create(model=MODEL, max_tokens=5000, messages=[{"role": "user", "content": prompt}])
         raw = msg.content[0].text.strip()
@@ -251,7 +268,7 @@ def review_spec(spec: dict, body: str) -> dict:
 
 def build_spec(title: str, category: str, body: str) -> dict:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = PROMPT.replace("{title}", title).replace("{category}", category or "직장인 투자").replace("{body}", body).replace("{quokkas}", ", ".join(f"{k}={v}" for k, v in QUOKKA.items()))
+    prompt = PROMPT.replace("{reader}", READER).replace("{title}", title).replace("{category}", category or "직장인 투자").replace("{body}", body).replace("{quokkas}", ", ".join(f"{k}={v}" for k, v in QUOKKA.items()))
     last_err = None
     for _ in range(2):
         msg = client.messages.create(model=MODEL, max_tokens=4000, messages=[{"role": "user", "content": prompt}])
@@ -369,6 +386,15 @@ tr.hl .g{color:var(--navy);background:rgba(255,255,255,.6)}
 .ctx{display:inline-flex;align-self:flex-start;gap:12px;align-items:center;margin-top:30px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:14px 22px;font-size:30px;font-weight:700;color:var(--txt);max-width:920px;line-height:1.4}
 .ctx b{color:var(--gold);white-space:nowrap}
 .how{margin-top:20px;font-size:32px;font-weight:700;color:var(--yel);line-height:1.45}
+.chat{margin-top:36px;display:flex;flex-direction:column;gap:22px}
+.msg{display:flex;align-items:flex-end;gap:14px}
+.msg.me{justify-content:flex-end}
+.bub{max-width:700px;font-size:38px;font-weight:700;line-height:1.42;padding:22px 30px;border-radius:34px;text-wrap:pretty}
+.msg.me .bub{background:var(--yel);color:var(--navy);border-bottom-right-radius:8px}
+.msg.qk .bub{background:#fff;color:var(--navy);border-bottom-left-radius:8px}
+.msg.qk .bub .g{color:var(--navy);background:linear-gradient(transparent 60%,rgba(255,215,106,.9) 60%)}
+.msg.me .bub .g{color:var(--navy);background:rgba(255,255,255,.6)}
+.av{width:86px;height:86px;object-fit:contain;flex:none;border-radius:50%;background:rgba(255,255,255,.12);padding:4px}
 .mini{margin-top:22px;font-size:32px;font-weight:700;color:var(--txt)}
 """
 
@@ -444,6 +470,15 @@ def slide_body(s) -> str:
                     f'<span class="tr" style="--z:{z}%"><i class="c"></i><i class="f {cls}" style="{pos};width:{w}%"></i></span>'
                     f'<span class="v">{t(i.get("display"))}</span></div>')
         return out + f'</div><p class="sub" style="margin-top:36px;color:#fff">{t(s.get("takeaway"))}</p>'
+    if ty == "chat":
+        av = quokka_img("phone_up_smile", "av")
+        out = '<div class="chat">'
+        for ln in (s.get("lines") or [])[:5]:
+            if ln.get("who") == "me":
+                out += f'<div class="msg me"><span class="bub">{t(ln.get("text"))}</span></div>'
+            else:
+                out += f'<div class="msg qk">{av}<span class="bub">{t(ln.get("text"))}</span></div>'
+        return out + "</div>"
     if ty in ("cards", "steps"):
         out = '<div style="margin-top:34px">'
         for k, i in enumerate(s.get("items", [])[:4]):
