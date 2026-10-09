@@ -159,10 +159,10 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
    {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "", "desc": ""}]}  // 3~4개
  ],
  "closing": {"badge": "🌿 WhiteCoffee의 관점", "title": "2줄 이내", "body": "1~2줄(본문의 필자 관점/경험이 있으면 그것)", "question": "💬 댓글을 부르는 질문 1개"},
- "caption": "인스타 본문. 1줄 훅 + 핵심 2~3줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💬 질문' (해시태그 제외, 링크 금지, 400자 이내)",
+ "caption": "인스타 본문(태그 없이 일반 줄바꿈 \\n 사용). 1줄 훅 + 핵심 2~3줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💬 질문' (해시태그 제외, 링크 금지, 400자 이내)",
  "hashtags": ["#태그", "..."]   // 5~8개, 검색량 있는 한국어/종목 태그
 }
-표(table) rows는 최대 5행 4열, bars items는 3~6개. 각 title은 최대 2줄 22자 내외.
+표(table) rows는 최대 4행 4열, 각 칸은 8자 이내(긴 설명은 cards로), bars items는 3~6개. 각 title은 최대 2줄 22자 내외.
 
 [블로그 글]
 제목: {title}
@@ -219,7 +219,7 @@ h2{font-size:64px;line-height:1.25;font-weight:900;margin-top:50px;letter-spacin
 table{width:100%;border-collapse:collapse;margin-top:50px;font-size:36px}
 th{font-size:28px;color:#c9a84b;padding:18px 10px;text-align:right;font-weight:700}
 th:first-child,td:first-child{text-align:left}
-td{padding:28px 10px;border-top:1px solid rgba(255,255,255,.14);text-align:right;font-weight:700}
+td{padding:24px 10px;word-break:keep-all;border-top:1px solid rgba(255,255,255,.14);text-align:right;font-weight:700}
 tr.hl td{color:#1e2d4f;background:#c9a84b}
 tr.hl td:first-child{border-radius:16px 0 0 16px} tr.hl td:last-child{border-radius:0 16px 16px 0}
 .note{font-size:24px;color:rgba(255,255,255,.5);margin-top:26px;line-height:1.5}
@@ -239,6 +239,16 @@ tr.hl td:first-child{border-radius:16px 0 0 16px} tr.hl td:last-child{border-rad
 .num{width:64px;height:64px;border-radius:50%;background:#c9a84b;color:#1e2d4f;font-weight:900;font-size:34px;display:flex;align-items:center;justify-content:center;flex:none}
 .bn{font-size:200px;font-weight:900;color:#c9a84b;letter-spacing:-6px;line-height:1.05;margin-top:60px}
 """
+
+
+FIT_JS = """() => document.querySelectorAll('section.s').forEach(sec => {
+  const bd = sec.querySelector('.bd'); if (!bd) return;
+  const limit = sec.getBoundingClientRect().top + 1350 - 150;
+  for (let z = 1; z > 0.6; z -= 0.04) {
+    bd.style.zoom = z;
+    if (bd.getBoundingClientRect().bottom <= limit) break;
+  }
+})"""
 
 
 def foot(last=False) -> str:
@@ -262,11 +272,16 @@ def slide_body(s) -> str:
     ty = s.get("type")
     if ty == "table":
         hl = s.get("highlight", -1)
+        nc = len(s.get("headers", [])) or 3
+        s["rows"] = [(list(r[:nc - 1]) + [" ".join(map(str, r[nc - 1:]))]) if len(r) > nc else list(r) + [""] * (nc - len(r))
+                     for r in s.get("rows", [])]
+        longest = max([len(str(x)) for r in s.get("rows", []) for x in r] + [0])
+        tstyle = ' style="font-size:30px"' if longest > 9 else ""
         head = "".join(f"<th>{t(x)}</th>" for x in s.get("headers", []))
         rows = "".join(
             f'<tr class="{"hl" if i == hl else ""}">' + "".join(f"<td>{t(x)}</td>" for x in r) + "</tr>"
             for i, r in enumerate(s.get("rows", [])[:5]))
-        return f'<table><tr>{head}</tr>{rows}</table><p class="note">{t(s.get("note"))}</p>'
+        return f'<table{tstyle}><tr>{head}</tr>{rows}</table><p class="note">{t(s.get("note"))}</p>'
     if ty == "bars":
         items = s.get("items", [])[:6]
         vals = [float(i.get("value") or 0) for i in items] or [0]
@@ -303,7 +318,7 @@ def slide_body(s) -> str:
 
 def slide_mid(s, n, total) -> str:
     return (f'<section class="s"><span class="badge">{t(s.get("badge"))}</span><span class="pg">{n}/{total}</span>'
-            f'<h2>{t(s.get("title"))}</h2>{slide_body(s)}{foot()}</section>')
+            f'<div class="bd"><h2>{t(s.get("title"))}</h2>{slide_body(s)}</div>{foot()}</section>')
 
 
 def slide_close(c, n, total) -> str:
@@ -328,6 +343,7 @@ def render(spec: dict, out_dir: Path) -> list[Path]:
         pg = b.new_page(viewport={"width": 1080, "height": 1350})
         pg.set_content(doc)
         pg.wait_for_timeout(600)
+        pg.evaluate(FIT_JS)
         for i, el in enumerate(pg.locator("section.s").all(), 1):
             path = out_dir / f"{i}.jpg"
             el.screenshot(path=str(path), type="jpeg", quality=92)
@@ -396,7 +412,8 @@ def main():
     print(f"선택된 글: {title}\n{post['link']}")
 
     spec = build_spec(title, post["category"], body)
-    caption = spec["caption"].strip() + "\n\n" + " ".join(spec.get("hashtags", [])[:8])
+    cap = re.sub(r"<br\s*/?>", "\n", spec["caption"]).replace("<g>", "").replace("</g>", "")
+    caption = re.sub(r"\n{3,}", "\n\n", cap).strip() + "\n\n" + " ".join(spec.get("hashtags", [])[:8])
     stamp = datetime.now(KST).strftime("%Y%m%d_%H%M")
     out_dir = IMAGES_ROOT / stamp
     paths = render(spec, out_dir)
