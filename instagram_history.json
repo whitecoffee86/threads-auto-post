@@ -1,6 +1,7 @@
 {
   "posted": [
-    "https://ideas07576.tistory.com/320"
+    "https://ideas07576.tistory.com/320",
+    "https://ideas07576.tistory.com/280"
   ],
   "token_refreshed_at": "2026-10-09T21:11:36.804664+09:00",
   "log": [
@@ -10,6 +11,13 @@
       "title": "SGOV 1억 월 배당금 얼마 (수동 업로드)",
       "media_id": null,
       "images": null
+    },
+    {
+      "at": "2026-10-09T21:14:00.830345+09:00",
+      "link": "https://ideas07576.tistory.com/280",
+      "title": "대출 상환 vs 투자 비율 (월 100만원 10년 시뮬레이션)",
+      "media_id": "18148153405560567",
+      "images": "20261009_2113"
     }
   ]
 }
