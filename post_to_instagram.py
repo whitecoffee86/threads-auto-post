@@ -180,7 +180,7 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 - 블로그 글은 어렵다. 글 전체를 요약하지 않는다. 이 독자에게 가장 와닿는 "오 그렇구나" 포인트 딱 하나만 골라 그것만 쉽게 설명한다.
 - 글의 나머지 디테일(세부 계산, 예외, 여러 시나리오)은 과감히 버린다. 궁금한 사람은 프로필 링크로 가면 된다.
 - 일상 상황으로 시작한다(월급날, 적금 만기, 카드값, 해외여행 환전, 연말정산, 커피 한 잔 값 등).
-- 말투: 친한 언니/선배가 카톡하듯 친근한 존댓말("~해요", "~거든요"). 훈계·전문가 톤 금지.
+- 말투: 친한 언니/선배가 카톡하듯 친근한 존댓말("~해요", "~거든요"). 제목·본문·쿼카 대사 모두 존댓말. 반말은 chat의 "me"(독자) 대사에만 허용. 훈계·전문가 톤 금지.
 
 [쉬운 말 규칙]
 - 금지 용어(쓰지 말고 풀어쓴다): 레버리지, 듀레이션, 과세표준, 손익분기, 순자산, 원천징수, 종합과세, 배분, 시나리오, 편차, 평가액, 비대칭, 리밸런싱, 분할매수, 권리락, 인적분할, 환헤지 등.
@@ -195,6 +195,7 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 1장 cover: 독자 일상 속 질문 + 힌트. 최종 답은 절대 표지에 쓰지 않는다(답을 보면 넘길 이유가 사라짐).
    단, 질문만 덩그러니 두지도 않는다. big에는 '힌트'(판단 기준의 개수, 반전 예고, 놀라운 숫자의 일부)를 넣는다.
    예) 질문 "월급 남으면…|대출부터? 투자부터?" + big "기준은 딱 1개" / big "의외의 답" / big "숫자 하나로 끝"
+   나쁜 예) big "반반이 답", "−3.4%", "2배" ← 결론·핵심 숫자를 표지에 쓰면 안 된다. 이런 건 2장에.
 2장 = slides[0]: type "bignum", badge "💡 결론부터". 인스타는 1장에서 안 넘긴 사람에게 2장을 다시 보여준다.
    그래서 topic(작은 주제 제목)을 꼭 넣어 2장만 봐도 '무슨 얘기 + 답'이 이해되게 한다.
 3장 = slides[1]: 공감·문제 — chat(대화형) 추천. "나도 이거 헷갈려" 상황.
@@ -239,9 +240,9 @@ REVIEW_PROMPT = """너는 아래 독자 본인이다: {reader}
 1. 모르는 단어가 하나라도 있나(상품명·은어 포함)? → 일상어로 바꾸거나 처음 나올 때 괄호 풀이.
 1-1. 대화형(chat)이 질문으로 끝나면 쿼카 답을 붙인다.
 2. 한 장에 숫자가 2개를 넘나? → 줄인다. 무슨 숫자인지 바로 알 수 있나?
-3. 1장만 봐도 "내 얘기다" 싶은가? 1장에 최종 답이 적혀 있으면 힌트로 바꾼다. 2장만 봐도 주제(topic)와 결론이 보이나?
+3. 1장만 봐도 "내 얘기다" 싶은가? cover.big·sub·bubble에 결론이나 2장 숫자가 들어 있으면 반드시 힌트로 바꾼다(예: "기준은 딱 1개"). 2장만 봐도 주제(topic)와 결론이 보이나?
 3-1. 내용이 겹치거나 억지로 채운 장이 있으면 지운다(최소 5개는 유지).
-4. 말투가 친한 선배 카톡처럼 편한가? 딱딱하거나 가르치는 말투면 고친다.
+4. 말투가 친한 선배 카톡처럼 편한 존댓말인가(반말은 chat의 me 대사만)? 딱딱하거나 가르치는 말투면 고친다.
 5. 블로그 디테일을 너무 많이 넣지 않았나? 포인트 하나(point)에 집중하도록 덜어낸다.
 6. 숫자는 원문에 있는 것만인가? 원문에 없는 숫자는 삭제.
 
@@ -260,6 +261,17 @@ PICK_PROMPT = """아래는 아직 인스타에 안 올린 블로그 글 목록�
 
 {items}
 """
+
+
+def enforce_structure(spec: dict) -> dict:
+    sl = spec.get("slides", [])
+    k = next((i for i, x in enumerate(sl) if x.get("type") == "bignum"), None)
+    if k not in (None, 0):
+        sl.insert(0, sl.pop(k))
+    if sl:
+        sl[0]["badge"] = "💡 결론부터"
+    spec["slides"] = sl[:6]
+    return spec
 
 
 def review_spec(spec: dict, body: str) -> dict:
@@ -353,7 +365,7 @@ h1{font-size:104px;line-height:1.2;font-weight:900;margin-top:56px;letter-spacin
 h2{font-size:68px;line-height:1.28;font-weight:900;margin-top:46px;letter-spacing:-.02em}
 .g{color:var(--yel);background:linear-gradient(transparent 64%,rgba(201,168,75,.35) 64%);padding:0 4px;border-radius:4px}
 .sub{font-size:42px;color:var(--txt);margin-top:28px;line-height:1.55;font-weight:700;letter-spacing:-.01em}
-.big{display:inline-block;align-self:flex-start;font-size:170px;font-weight:900;color:var(--navy);letter-spacing:-.04em;line-height:1.05;margin-top:40px;
+.big{display:inline-block;align-self:flex-start;max-width:560px;font-size:170px;font-weight:900;color:var(--navy);letter-spacing:-.04em;line-height:1.05;margin-top:40px;
   background:var(--yel);padding:6px 32px 14px;border-radius:28px;transform:rotate(-2deg);box-shadow:0 14px 0 var(--gold),0 24px 40px rgba(0,0,0,.35)}
 .sticker{position:absolute;right:70px;top:196px;background:#fff;color:var(--navy);font-weight:900;font-size:30px;padding:14px 24px;border-radius:18px;transform:rotate(6deg);box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .qc{position:absolute;right:-20px;bottom:100px;height:560px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
@@ -479,7 +491,7 @@ def slide_cover(c, n, total, variant="navy") -> str:
     sticker = '<span class="sticker">📌 저장 필수</span>' if c.get("save_sticker") and not c.get("context") else ""
     return (f'<section class="s {variant}">{top(c.get("badge"), n, total)}{sticker}'
             f'<div class="bd" style="max-width:920px">{ctx_chip(c)}<h1 style="{_fit(c.get("title"), 104, 10)}">{t(c.get("title"))}</h1>'
-            f'<div class="big" style="{_fit(c.get("big"), 170, 5)}">{t(plain(c.get("big")))}</div>'
+            f'<div class="big" style="{_fit(c.get("big"), 150, 5)}">{t(plain(c.get("big")))}</div>'
             f'<p class="sub" style="max-width:600px">{t(c.get("sub"))}</p></div>{q}{bubble}{foot(nxt="👉 답 보기")}</section>')
 
 
@@ -659,7 +671,7 @@ def main():
     title = post["title"] or title
     print(f"선택된 글: {title}\n{post['link']}")
 
-    spec = review_spec(build_spec(title, post["category"], body), body)
+    spec = enforce_structure(review_spec(enforce_structure(build_spec(title, post["category"], body)), body))
     cap = re.sub(r"<br\s*/?>", "\n", spec["caption"]).replace("<g>", "").replace("</g>", "")
     caption = re.sub(r"\n{3,}", "\n\n", cap).strip() + "\n\n" + " ".join(spec.get("hashtags", [])[:8])
     stamp = datetime.now(KST).strftime("%Y%m%d_%H%M")
