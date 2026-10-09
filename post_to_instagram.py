@@ -161,32 +161,39 @@ def fetch_article_text(url: str) -> tuple[str, str]:
 
 # ─── Claude: 슬라이드 구성 ─────────────────────────
 PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에디터다. 아래 블로그 글을 1080×1350 캐러셀 6장으로 재구성한다.
+화자는 직장인 투자자 'WhiteCoffee'와 캐릭터 '주식농부쿼카'. 친한 선배가 숫자로 솔직하게 알려주는 톤.
 
 [절대 규칙]
 - 숫자·사실은 반드시 본문에 있는 것만 쓴다. 새 숫자를 지어내거나 계산하지 않는다.
 - 특정 상품 매수 권유처럼 보이는 문장 금지. 기록·정리 톤.
-- 짧게. 모바일에서 1초에 읽혀야 한다. 강조하고 싶은 핵심 단어/숫자는 <g>...</g>로 감싼다(금색). 줄바꿈은 <br>.
-- 이모지를 적당히 쓴다(배지, 카드 아이콘).
-- 가운데 4장은 내용에 맞는 형태를 골라 서로 다르게 구성한다(같은 type 최대 2번).
+- 짧게. 한 장에 메시지 하나. 본문 장은 제목 포함 90자 이내.
+- 핵심 숫자/단어는 <g>...</g>로 강조(한 문장에 최대 1~2개).
+- 줄바꿈은 | 로 직접 표시한다. 의미 단위로 끊는다: 쉼표·물음표 뒤 → 조사(은/는/이/가/을/를/에/의/로)·연결어미(-고/-면/-서/-지만)로 끝나는 어절 뒤. 숫자와 그 숫자가 꾸미는 명사, 꾸밈말과 명사 사이는 끊지 않는다. 각 줄 길이는 비슷하게.
+- 이모지는 배지에 1개, 항목 아이콘에 1개까지만.
+
+[구성]
+1장 cover: 숫자+물음표 훅이 기본("월 30만원으로|10년 뒤 5,000만원?" 같은 식).
+2장 = slides[0]: 반드시 type "bignum", badge "💡 결론부터". 캐러셀을 안 넘긴 사람에게 인스타가 2장을 다시 보여주므로, 이 장만 봐도 결론이 이해돼야 한다.
+3~5장 = slides[1..3]: 내용에 맞는 형태를 골라 서로 다르게(같은 type 반복 금지).
+6장 closing: 3줄 요약(저장할 이유가 되는 장).
 
 [출력: JSON만, 코드블록 없이]
 {
- "cover": {"badge": "카테고리명 + 이모지 1개", "title": "질문형 훅 2줄(<br>), 최대 22자", "big": "가장 강력한 숫자/결론 최대 7자", "sub": "부연 2줄, 최대 40자, 마지막에 반전/궁금증", "quokka": "쿼카 키", "bubble": "쿼카 말풍선 감탄 최대 9자 (예: 세금이 이만큼?!)"},
- "slides": [  // 정확히 4개
+ "cover": {"badge": "카테고리명 + 이모지", "title": "훅, | 로 2~3줄, 최대 20자", "big": "가장 강한 숫자/결론, 최대 6자", "sub": "부연, | 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 감탄 한마디 최대 8자", "save_sticker": true/false (체크리스트·요약·표처럼 저장할 가치가 큰 글이면 true)},
+ "slides": [  // 정확히 4개, 첫 번째는 bignum
+   {"type": "bignum", "badge": "💡 결론부터", "title": "| 로 2줄 이내", "value": "결론 숫자 최대 6자", "label": "숫자 설명 한 줄", "body": "이유 1~2줄", "quokka": "쿼카 키"},
    {"type": "table", "badge": "...", "title": "...", "headers": ["", "", ""], "rows": [["", "", ""]], "highlight": 행번호(0부터, 없으면 -1), "note": "※ 계산 근거 한 줄"},
-   {"type": "bars", "badge": "...", "title": "...", "sub": "...", "items": [{"label": "", "value": 숫자(음수 가능), "display": "표시 문자열"}], "takeaway": "👉 한 줄"},
-   {"type": "cards", "badge": "...", "title": "...", "items": [{"icon": "이모지", "title": "", "desc": ""}]},   // 2~4개
-   {"type": "compare", "badge": "...", "title": "...", "left": {"label": "", "value": ""}, "right": {"label": "", "value": ""}, "body": "1~2줄"},
-   {"type": "bignum", "badge": "...", "title": "...", "value": "", "label": "", "body": "1~2줄"},
-   {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "", "desc": ""}]}  // 3~4개
+   {"type": "bars", "badge": "...", "title": "...", "sub": "...", "items": [{"label": "최대 7자", "value": 숫자(손실·하락은 음수), "display": "표시 문자열"}], "takeaway": "👉 한 줄"},
+   {"type": "cards", "badge": "...", "title": "...", "items": [{"icon": "이모지", "title": "최대 14자", "desc": "최대 24자"}]},   // 2~3개
+   {"type": "compare", "badge": "...", "title": "...", "left": {"label": "", "value": "최대 6자", "points": ["✅/❌로 시작하는 짧은 줄", "..."]}, "right": {...같은 형식}, "body": "1줄", "quokka": "쿼카 키(선택)"},
+   {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "최대 14자", "desc": "최대 24자"}]}  // 3~4개
  ],
- "closing": {"badge": "🌿 WhiteCoffee의 관점", "title": "2줄 이내", "body": "1~2줄(본문의 필자 관점/경험이 있으면 그것)", "question": "댓글을 부르는 질문 1개(이모지 없이, 최대 30자)", "quokka": "쿼카 키(표지와 다른 것)"},
- "caption": "인스타 본문(태그 없이 일반 줄바꿈 \\n 사용). 1줄 훅 + 핵심 2~3줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💬 질문' (해시태그 제외, 링크 금지, 400자 이내)",
+ "closing": {"badge": "🌿 WhiteCoffee의 관점", "title": "| 로 2줄 이내, 필자의 관점 한마디", "summary": ["요약 1(최대 22자)", "요약 2", "요약 3"], "quokka": "쿼카 키(표지와 다른 것)"},
+ "caption": "인스타 본문(일반 줄바꿈 \\n). 1줄 훅 + 핵심 2~3줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💌 ~한 동료에게 보내주세요' + '💬 댓글을 부르는 질문 1개' (해시태그·링크 금지, 400자 이내)",
  "hashtags": ["#태그", "..."]   // 5~8개, 검색량 있는 한국어/종목 태그
 }
-compare·bignum 슬라이드에는 "quokka": "쿼카 키"를 넣을 수 있다(선택, 내용 분위기와 맞을 때만).
-쿼카 키 목록(내용 분위기에 맞게 고른다): {quokkas}
-표(table) rows는 최대 4행 4열, 각 칸은 8자 이내(긴 설명은 cards로), bars items는 3~6개. 각 title은 최대 2줄 22자 내외.
+표(table): 최대 4행 4열, 각 칸 8자 이내(긴 설명은 cards로). bars: 3~5개. compare points: 각 0~3줄.
+쿼카 키 목록(내용 분위기에 맞게, 놀람·뿌듯·걱정·설명 중 주제에 맞는 표정): {quokkas}
 
 [블로그 글]
 제목: {title}
@@ -208,6 +215,8 @@ def build_spec(title: str, category: str, body: str) -> dict:
             spec = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
             assert spec["cover"] and len(spec["slides"]) >= 3 and spec["closing"] and spec["caption"]
             spec["slides"] = spec["slides"][:4]
+            if spec["slides"][0].get("type") != "bignum":
+                print("경고: 2장이 bignum이 아님 — 그대로 진행")
             return spec
         except Exception as e:
             last_err = e
@@ -216,15 +225,26 @@ def build_spec(title: str, category: str, body: str) -> dict:
 
 
 # ─── 렌더링 ────────────────────────────────────────
+EMOJI = r"[\U0001F300-\U0001FAFF☀-➿⬀-⯿]"
+NUM_UNIT = re.compile(r"([+\-−]?\d[\d,.]*\s?(?:%p|%|만\s?원|억\s?원|조\s?원|천\s?원|원|만|억|조|배|년|개월|일|주|달러|bp|세|명|개|장|번|회|위|등)?)")
+NB_WORDS = ["S&amp;P 500", "S&amp;P500", "나스닥 100", "ISA 계좌", "연금저축", "미국 직투", "국내 상장"]
+
+
 def t(s) -> str:
-    """사용자 텍스트 이스케이프 후 <g>, <br>만 허용."""
+    """사용자 텍스트 → 안전한 HTML. 허용: <g>(강조), | 또는 <br>(줄바꿈).
+    한국어 줄바꿈 보정: 숫자+단위·고유명사는 nowrap, 이모지는 앞 어절에 붙임."""
     s = html.escape(str(s or ""))
+    s = re.sub(r"&lt;br\s*/?&gt;", "|", s)
+    s = NUM_UNIT.sub(lambda m: '<span class="nb">' + m.group(1).replace(" ", "&nbsp;") + "</span>" if re.search(r"\d", m.group(1)) else m.group(1), s)
+    for w in NB_WORDS:
+        s = s.replace(w, f'<span class="nb">{w.replace(" ", "&nbsp;")}</span>')
+    s = re.sub(r" (?=" + EMOJI + ")", "&nbsp;", s)
     s = s.replace("&lt;g&gt;", '<span class="g">').replace("&lt;/g&gt;", "</span>")
-    return re.sub(r"&lt;br\s*/?&gt;", "<br>", s)
+    return re.sub(r"\s*\|\s*", "<br>", s.strip("| "))
 
 
 def plain(s) -> str:
-    return re.sub(r"<[^>]+>", "", str(s or ""))
+    return re.sub(r"<[^>]+>|\|", "", str(s or ""))
 
 
 def quokka_img(key, cls: str) -> str:
@@ -236,61 +256,71 @@ def quokka_img(key, cls: str) -> str:
 
 
 CSS = """
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;font-family:'Pretendard','Noto Sans CJK KR','Noto Sans KR',sans-serif;color:#fff;word-break:keep-all}
-.s{width:1080px;height:1350px;position:relative;overflow:hidden;padding:90px 80px;display:flex;flex-direction:column;
-  background:radial-gradient(900px 700px at 0% 0%,rgba(201,168,75,.20),transparent 60%),
-             radial-gradient(800px 800px at 110% 105%,rgba(91,140,255,.16),transparent 60%),#1e2d4f}
-.s::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 2px,transparent 2px);background-size:36px 36px;pointer-events:none}
+:root{--navy:#1E2D4F;--card:#26375F;--gold:#C9A84B;--yel:#FFD76A;--txt:#DCE3F0;--up:#FF6B6B;--down:#4DA3FF;--cream:#FFF8EC}
+*{margin:0;padding:0;box-sizing:border-box;word-break:keep-all;overflow-wrap:anywhere;line-break:strict}
+body{background:#111;font-family:'Pretendard','Noto Sans CJK KR','Noto Sans KR',sans-serif;color:#fff}
+h1,h2,.ttl,.big,.bn,.bubble,.ask{text-wrap:balance}
+p,small,.sub,.note,li{text-wrap:pretty}
+.nb{white-space:nowrap}
+.s{width:1080px;height:1350px;position:relative;overflow:hidden;padding:96px 80px;display:flex;flex-direction:column;
+  background:radial-gradient(900px 700px at 0% 0%,rgba(201,168,75,.18),transparent 60%),
+             radial-gradient(800px 800px at 110% 105%,rgba(91,140,255,.14),transparent 60%),var(--navy)}
+.s::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.05) 2px,transparent 2px);background-size:36px 36px;pointer-events:none}
 .s>*{position:relative}
 .top{display:flex;align-items:center;gap:16px}
-.badge{display:inline-block;background:#c9a84b;color:#1e2d4f;font-weight:900;font-size:30px;padding:10px 26px;border-radius:40px;box-shadow:0 6px 0 #8a7238}
-.pg{margin-left:auto;font-size:26px;color:rgba(255,255,255,.55);font-weight:800;background:rgba(255,255,255,.08);padding:8px 18px;border-radius:30px}
-.foot{position:absolute;left:80px;right:80px;bottom:60px;display:flex;align-items:center;gap:16px;font-size:26px;color:rgba(255,255,255,.75);font-weight:700}
-.logo{width:54px;height:54px;border-radius:50%;border:3px solid #c9a84b;color:#c9a84b;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;line-height:1;text-align:center;background:#1e2d4f}
-.swipe{margin-left:auto;color:#1e2d4f;background:#c9a84b;padding:10px 22px;border-radius:30px;font-weight:900}
-h1{font-size:86px;line-height:1.2;font-weight:900;margin-top:56px;letter-spacing:-2.5px;text-shadow:0 4px 18px rgba(0,0,0,.25)}
-h2{font-size:64px;line-height:1.24;font-weight:900;margin-top:46px;letter-spacing:-1.5px}
-.g{color:#ffd76a;background:linear-gradient(transparent 62%,rgba(201,168,75,.38) 62%);padding:0 4px;border-radius:4px}
-.sub{font-size:35px;color:rgba(255,255,255,.8);margin-top:26px;line-height:1.5;font-weight:500}
-.big{display:inline-block;align-self:flex-start;font-size:170px;font-weight:900;color:#1e2d4f;letter-spacing:-6px;line-height:1.08;margin-top:40px;
-  background:#ffd76a;padding:4px 30px 12px;border-radius:28px;transform:rotate(-2deg);box-shadow:0 14px 0 #c9a84b,0 24px 40px rgba(0,0,0,.35)}
-.sticker{position:absolute;right:70px;top:190px;background:#fff;color:#1e2d4f;font-weight:900;font-size:30px;padding:14px 24px;border-radius:18px;transform:rotate(6deg);box-shadow:0 8px 24px rgba(0,0,0,.3)}
-.qc{position:absolute;right:-20px;bottom:100px;height:600px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
-.bubble{position:absolute;right:50px;bottom:690px;background:#fff;color:#1e2d4f;font-weight:900;font-size:38px;padding:20px 30px;border-radius:30px;box-shadow:0 10px 30px rgba(0,0,0,.3);white-space:nowrap}
+.badge{display:inline-block;background:var(--gold);color:var(--navy);font-weight:900;font-size:30px;padding:10px 26px;border-radius:40px;box-shadow:0 6px 0 #8a7238}
+.pg{margin-left:auto;font-size:28px;color:var(--gold);font-weight:800;background:rgba(255,255,255,.07);padding:8px 18px;border-radius:30px}
+.foot{position:absolute;left:80px;right:80px;bottom:60px;display:flex;align-items:center;gap:14px;font-size:28px;color:rgba(255,255,255,.75);font-weight:600}
+.logo{width:54px;height:54px;border-radius:50%;border:3px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;line-height:1;text-align:center;background:var(--navy)}
+.foot b{color:var(--gold);font-weight:700}
+.swipe{margin-left:auto;color:var(--navy);background:var(--gold);padding:10px 24px;border-radius:30px;font-weight:900}
+h1{font-size:104px;line-height:1.2;font-weight:900;margin-top:56px;letter-spacing:-.03em;text-shadow:0 4px 18px rgba(0,0,0,.25);max-width:920px}
+h2{font-size:68px;line-height:1.28;font-weight:900;margin-top:46px;letter-spacing:-.02em}
+.g{color:var(--yel);background:linear-gradient(transparent 64%,rgba(201,168,75,.35) 64%);padding:0 4px;border-radius:4px}
+.sub{font-size:42px;color:var(--txt);margin-top:28px;line-height:1.55;font-weight:700;letter-spacing:-.01em}
+.big{display:inline-block;align-self:flex-start;font-size:170px;font-weight:900;color:var(--navy);letter-spacing:-.04em;line-height:1.05;margin-top:40px;
+  background:var(--yel);padding:6px 32px 14px;border-radius:28px;transform:rotate(-2deg);box-shadow:0 14px 0 var(--gold),0 24px 40px rgba(0,0,0,.35)}
+.sticker{position:absolute;right:70px;top:196px;background:#fff;color:var(--navy);font-weight:900;font-size:30px;padding:14px 24px;border-radius:18px;transform:rotate(6deg);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.qc{position:absolute;right:-20px;bottom:100px;height:560px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
+.bubble{position:absolute;right:50px;bottom:650px;background:#fff;color:var(--navy);font-weight:900;font-size:36px;padding:18px 28px;border-radius:30px;box-shadow:0 10px 30px rgba(0,0,0,.3);white-space:nowrap}
 .bubble::after{content:"";position:absolute;left:50%;bottom:-28px;border:16px solid transparent;border-top-color:#fff}
-.card{background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.14);border-radius:28px;padding:30px 36px;margin-top:20px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
-table{width:100%;border-collapse:separate;border-spacing:0;margin-top:44px;font-size:36px;background:rgba(255,255,255,.05);border-radius:24px;overflow:hidden}
-th{font-size:28px;color:#1e2d4f;background:#c9a84b;padding:20px 18px;text-align:right;font-weight:900}
+.card{background:var(--card);border:1px solid rgba(255,255,255,.12);border-radius:28px;padding:30px 36px;margin-top:20px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+table{width:100%;border-collapse:separate;border-spacing:0;margin-top:44px;font-size:38px;background:var(--card);border-radius:24px;overflow:hidden}
+th{font-size:30px;color:var(--navy);background:var(--gold);padding:20px 18px;text-align:right;font-weight:900}
 th:first-child,td:first-child{text-align:left}
-td{padding:24px 18px;border-top:1px solid rgba(255,255,255,.1);text-align:right;font-weight:700}
+td{padding:24px 18px;border-top:1px solid rgba(255,255,255,.1);text-align:right;font-weight:700;color:var(--txt);line-height:1.35}
 td.nw{white-space:nowrap}
-tr.hl td{color:#1e2d4f;background:#ffd76a;font-weight:900}
-tr.hl .g{color:#1e2d4f;background:rgba(255,255,255,.55)}
-.note{font-size:24px;color:rgba(255,255,255,.55);margin-top:24px;line-height:1.5}
-.bar{display:flex;align-items:center;gap:20px;margin-top:28px;font-size:32px;font-weight:700}
-.bar .l{width:230px}
+tr.hl td{color:var(--navy);background:var(--yel);font-weight:900}
+tr.hl .g{color:var(--navy);background:rgba(255,255,255,.6)}
+.note{font-size:28px;color:rgba(220,227,240,.7);margin-top:24px;line-height:1.5;font-weight:500}
+.bar{display:flex;align-items:center;gap:20px;margin-top:28px;font-size:34px;font-weight:700;color:var(--txt)}
+.bar .l{width:240px;line-height:1.3}
 .bar .tr{flex:1;height:62px;position:relative;background:rgba(255,255,255,.05);border-radius:14px}
 .bar .c{position:absolute;left:var(--z);top:-8px;bottom:-8px;width:3px;background:rgba(255,255,255,.35)}
 .bar .f{position:absolute;top:0;height:62px;border-radius:14px}
-.bar .v{width:210px;text-align:right;font-weight:900}
-.neg{background:linear-gradient(90deg,#ff8a7a,#e0675a)}.pos{background:linear-gradient(90deg,#c9a84b,#ffd76a)}
-.row{display:flex;gap:26px;align-items:center;font-size:38px;line-height:1.4;font-weight:800}
-.ic{width:84px;height:84px;flex:none;border-radius:24px;background:rgba(201,168,75,.18);display:flex;align-items:center;justify-content:center;font-size:48px}
-.row small{display:block;font-size:28px;font-weight:500;color:rgba(255,255,255,.7);margin-top:4px}
+.bar .v{width:210px;text-align:right;font-weight:900;color:#fff}
+.bar.top1 .v{color:var(--yel)}
+.neg{background:linear-gradient(90deg,#7cbcff,var(--down))}.pos{background:#3A4C78}.pos.hi{background:linear-gradient(90deg,var(--gold),var(--yel))}
+.row{display:flex;gap:26px;align-items:center;font-size:42px;line-height:1.35;font-weight:900}
+.ic{width:88px;height:88px;flex:none;border-radius:24px;background:rgba(201,168,75,.18);display:flex;align-items:center;justify-content:center;font-size:50px}
+.row small{display:block;font-size:34px;font-weight:600;color:var(--txt);margin-top:6px;line-height:1.45}
 .cmp{display:flex;gap:26px;margin-top:46px;align-items:stretch;position:relative}
-.cmp .card{flex:1;text-align:center;margin-top:0;padding:40px 20px}
-.cmp .vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:86px;height:86px;border-radius:50%;background:#e0675a;color:#fff;font-weight:900;font-size:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.35)}
-.cmp .n{font-size:92px;font-weight:900;letter-spacing:-3px;line-height:1.2;margin-top:10px}
-.num{width:72px;height:72px;border-radius:50%;background:#c9a84b;color:#1e2d4f;font-weight:900;font-size:36px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 5px 0 #8a7238}
-.bn{font-size:200px;font-weight:900;color:#ffd76a;letter-spacing:-6px;line-height:1.05;margin-top:56px;text-shadow:0 10px 0 rgba(0,0,0,.2)}
-.qm{position:absolute;right:30px;bottom:120px;height:330px;filter:drop-shadow(0 14px 20px rgba(0,0,0,.4))}
-.qe{position:absolute;right:-20px;bottom:110px;height:500px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
-.ask{margin-top:40px;width:640px;background:#fff;color:#1e2d4f;border-radius:36px;padding:34px 40px;font-size:44px;font-weight:900;line-height:1.35;position:relative;box-shadow:0 14px 40px rgba(0,0,0,.3)}
-.ask::before{content:"💬";position:absolute;left:-18px;top:-30px;font-size:56px}
-.ask::after{content:"";position:absolute;right:-22px;top:60px;border:18px solid transparent;border-left-color:#fff}
-.cta{display:flex;gap:16px;margin-top:40px}
-.cta span{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:40px;padding:14px 24px;font-size:28px;font-weight:800}
+.cmp .card{flex:1;margin-top:0;padding:36px 30px;text-align:left}
+.cmp .lb{font-size:34px;color:var(--txt);font-weight:700}
+.cmp .n{font-size:84px;font-weight:900;letter-spacing:-.03em;line-height:1.15;margin:8px 0 10px}
+.cmp ul{list-style:none;font-size:32px;line-height:1.45;color:var(--txt);font-weight:600}
+.cmp li{margin-top:8px}
+.cmp .vs{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:#e0675a;color:#fff;font-weight:900;font-size:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.num{width:72px;height:72px;border-radius:50%;background:var(--gold);color:var(--navy);font-weight:900;font-size:36px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 5px 0 #8a7238}
+.bn{display:inline-block;align-self:flex-start;font-size:190px;font-weight:900;color:var(--navy);background:var(--yel);letter-spacing:-.04em;line-height:1.05;margin-top:50px;padding:6px 32px 14px;border-radius:28px;box-shadow:0 14px 0 var(--gold)}
+.qm{position:absolute;right:20px;bottom:120px;height:340px;filter:drop-shadow(0 14px 20px rgba(0,0,0,.4))}
+.qe{position:absolute;right:50px;top:140px;height:240px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
+.sum{margin-top:40px;background:var(--cream);color:var(--navy);border-radius:32px;padding:34px 40px;box-shadow:0 14px 40px rgba(0,0,0,.3)}
+.sum .h{font-size:30px;font-weight:900;color:#8a7238}
+.sum li{list-style:none;font-size:40px;font-weight:800;line-height:1.4;margin-top:16px;display:flex;gap:14px}
+.sum .g{color:var(--navy);background:linear-gradient(transparent 60%,rgba(255,215,106,.85) 60%)}
+.send{margin-top:40px;align-self:flex-start;background:var(--yel);color:var(--navy);font-weight:900;font-size:46px;padding:22px 36px;border-radius:40px;box-shadow:0 8px 0 var(--gold)}
+.mini{margin-top:22px;font-size:32px;font-weight:700;color:var(--txt)}
 """
 
 FIT_JS = """() => document.querySelectorAll('section.s').forEach(sec => {
@@ -304,7 +334,9 @@ FIT_JS = """() => document.querySelectorAll('section.s').forEach(sec => {
 
 
 def _fit(text, base: int, max_chars: int) -> str:
-    n = len(plain(text))
+    """가장 긴 줄 기준으로 글자 크기 축소."""
+    lines = re.split(r"\||<br\s*/?>", str(text or ""))
+    n = max(len(plain(x).strip()) for x in lines) if lines else 0
     return f"font-size:{base if n <= max_chars else int(base * max_chars / n)}px"
 
 
@@ -314,15 +346,17 @@ def top(badge, n, total) -> str:
 
 def foot(last=False) -> str:
     sw = "" if last else '<span class="swipe">넘기기 →</span>'
-    return f'<div class="foot"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사{sw}</div>'
+    return f'<div class="foot"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사 <b>@ayunfafa</b>{sw}</div>'
 
 
 def slide_cover(c, n, total) -> str:
     q = quokka_img(c.get("quokka") or "pointer_explain", "qc")
     bubble = f'<div class="bubble">{t(plain(c.get("bubble")))}</div>' if q and c.get("bubble") else ""
-    return (f'<section class="s">{top(c.get("badge"), n, total)}<span class="sticker">📌 저장 필수</span>'
-            f'<h1>{t(c.get("title"))}</h1><div class="big" style="{_fit(c.get("big"), 170, 5)}">{t(plain(c.get("big")))}</div>'
-            f'<p class="sub" style="max-width:640px">{t(c.get("sub"))}</p>{q}{bubble}{foot()}</section>')
+    sticker = '<span class="sticker">📌 저장 필수</span>' if c.get("save_sticker") else ""
+    return (f'<section class="s">{top(c.get("badge"), n, total)}{sticker}'
+            f'<div class="bd" style="max-width:920px"><h1 style="{_fit(c.get("title"), 104, 10)}">{t(c.get("title"))}</h1>'
+            f'<div class="big" style="{_fit(c.get("big"), 170, 5)}">{t(plain(c.get("big")))}</div>'
+            f'<p class="sub" style="max-width:600px">{t(c.get("sub"))}</p></div>{q}{bubble}{foot()}</section>')
 
 
 def slide_body(s) -> str:
@@ -333,44 +367,48 @@ def slide_body(s) -> str:
         s["rows"] = [(list(r[:nc - 1]) + [" ".join(map(str, r[nc - 1:]))]) if len(r) > nc else list(r) + [""] * (nc - len(r))
                      for r in s.get("rows", [])]
         longest = max([len(plain(x)) for r in s.get("rows", []) for x in r] + [0])
-        tstyle = ' style="font-size:30px"' if longest > 9 else ""
+        tstyle = ' style="font-size:32px"' if longest > 9 else ""
         head = "".join(f"<th>{t(x)}</th>" for x in s.get("headers", []))
         rows = "".join(
-            f'<tr class="{"hl" if i == hl else ""}">' + "".join(f'<td{" class=nw" if len(plain(x)) <= 6 else ""}>{t(x)}</td>' for x in r) + "</tr>"
-            for i, r in enumerate(s.get("rows", [])[:5]))
+            f'<tr class="{"hl" if i == hl else ""}">'
+            + "".join(f'<td{" class=nw" if len(plain(x)) <= 6 else ""}>{t(x)}</td>' for x in r) + "</tr>"
+            for i, r in enumerate(s.get("rows", [])[:4]))
         return f'<table{tstyle}><tr>{head}</tr>{rows}</table><p class="note">{t(s.get("note"))}</p>'
     if ty == "bars":
-        items = s.get("items", [])[:6]
+        items = s.get("items", [])[:5]
         vals = [float(i.get("value") or 0) for i in items] or [0]
         lo, hi = min(min(vals), 0), max(max(vals), 0)
         span = (hi - lo) or 1
         z = (0 - lo) / span * 100
+        best = max(range(len(vals)), key=lambda k: abs(vals[k])) if vals else -1
         out = f'<p class="sub">{t(s.get("sub"))}</p><div class="card" style="margin-top:30px;padding:16px 30px 34px">'
-        for i, v in zip(items, vals):
+        for k, (i, v) in enumerate(zip(items, vals)):
             w = abs(v) / span * 100
             pos = f"left:{z}%" if v >= 0 else f"right:{100 - z}%"
-            cls = "pos" if v >= 0 else "neg"
-            out += (f'<div class="bar"><span class="l">{t(i.get("label"))}</span>'
+            cls = "neg" if v < 0 else ("pos hi" if k == best else "pos")
+            out += (f'<div class="bar{" top1" if k == best else ""}"><span class="l">{t(i.get("label"))}</span>'
                     f'<span class="tr" style="--z:{z}%"><i class="c"></i><i class="f {cls}" style="{pos};width:{w}%"></i></span>'
                     f'<span class="v">{t(i.get("display"))}</span></div>')
-        return out + f'</div><p class="sub" style="font-size:33px;margin-top:36px;font-weight:700;color:#fff">{t(s.get("takeaway"))}</p>'
-    if ty == "cards":
-        return '<div style="margin-top:34px">' + "".join(
-            f'<div class="card"><div class="row"><span class="ic">{t(i.get("icon"))}</span><div>{t(i.get("title"))}'
-            f'<small>{t(i.get("desc"))}</small></div></div></div>' for i in s.get("items", [])[:4]) + "</div>"
+        return out + f'</div><p class="sub" style="margin-top:36px;color:#fff">{t(s.get("takeaway"))}</p>'
+    if ty in ("cards", "steps"):
+        out = '<div style="margin-top:34px">'
+        for k, i in enumerate(s.get("items", [])[:4]):
+            mark = f'<span class="num">{k + 1}</span>' if ty == "steps" else f'<span class="ic">{t(i.get("icon"))}</span>'
+            out += f'<div class="card"><div class="row">{mark}<div>{t(i.get("title"))}<small>{t(i.get("desc"))}</small></div></div></div>'
+        return out + "</div>"
     if ty == "compare":
-        L, R = s.get("left", {}), s.get("right", {})
-        return (f'<div class="cmp"><div class="card"><div class="sub" style="margin:0">{t(L.get("label"))}</div><div class="n">{t(L.get("value"))}</div></div>'
-                f'<div class="card" style="border:3px solid #ffd76a"><div class="sub" style="margin:0">{t(R.get("label"))}</div><div class="n" style="color:#ffd76a">{t(R.get("value"))}</div></div>'
-                f'<span class="vs">VS</span></div><p class="sub" style="margin-top:40px;max-width:{620 if s.get("quokka") else 920}px">{t(s.get("body"))}</p>')
+        def side(d, hi):
+            pts = "".join(f"<li>{t(p)}</li>" for p in (d.get("points") or [])[:3])
+            col = "color:var(--yel)" if hi else ""
+            border = ' style="border:3px solid var(--yel)"' if hi else ""
+            return (f'<div class="card"{border}><div class="lb">{t(d.get("label"))}</div>'
+                    f'<div class="n" style="{col}">{t(d.get("value"))}</div><ul>{pts}</ul></div>')
+        return (f'<div class="cmp">{side(s.get("left", {}), False)}{side(s.get("right", {}), True)}<span class="vs">VS</span></div>'
+                f'<p class="sub" style="margin-top:40px;max-width:{640 if s.get("quokka") else 920}px">{t(s.get("body"))}</p>')
     if ty == "bignum":
-        return (f'<div class="bn" style="{_fit(s.get("value"), 200, 6)}">{t(plain(s.get("value")))}</div>'
-                f'<p class="sub" style="font-size:42px;font-weight:800;color:#fff">{t(s.get("label"))}</p>'
+        return (f'<div class="bn" style="{_fit(s.get("value"), 190, 5)}">{t(plain(s.get("value")))}</div>'
+                f'<p class="sub" style="font-size:46px;font-weight:900;color:#fff;margin-top:52px;max-width:{640 if s.get("quokka") else 920}px">{t(s.get("label"))}</p>'
                 f'<p class="sub" style="max-width:{620 if s.get("quokka") else 920}px">{t(s.get("body"))}</p>')
-    if ty == "steps":
-        return '<div style="margin-top:34px">' + "".join(
-            f'<div class="card"><div class="row"><span class="num">{k + 1}</span><div>{t(i.get("title"))}'
-            f'<small>{t(i.get("desc"))}</small></div></div></div>' for k, i in enumerate(s.get("items", [])[:4])) + "</div>"
     return f'<p class="sub">{t(s.get("body"))}</p>'
 
 
@@ -381,12 +419,17 @@ def slide_mid(s, n, total) -> str:
 
 
 def slide_close(c, n, total) -> str:
-    q = quokka_img(c.get("quokka") or "thinking_question", "qe")
+    q = quokka_img(c.get("quokka") or "confident_thumbs", "qe")
+    summ = c.get("summary") or []
+    if not summ and c.get("body"):
+        summ = [c.get("body")]
+    lis = "".join(f"<li><span>✅</span><span>{t(x)}</span></li>" for x in summ[:3])
     return (f'<section class="s">{top(c.get("badge"), n, total)}'
-            f'<h2>{t(c.get("title"))}</h2><p class="sub" style="max-width:700px">{t(c.get("body"))}</p>'
-            f'<div class="ask">{t(plain(c.get("question")).lstrip("💬 "))}</div>'
-            f'<div class="cta"><span>📌 저장</span><span>🔁 공유</span><span>➕ 팔로우</span></div>'
-            f'<p class="note" style="margin-top:28px;max-width:640px">전체 계산은 프로필 링크 · 개인 기록이며 특정 상품의 매수를 권하지 않습니다</p>'
+            f'<div class="bd"><h2 style="max-width:660px">{t(c.get("title"))}</h2>'
+            f'<div class="sum"><div class="h">📝 3줄 요약</div><ul>{lis}</ul></div>'
+            f'<div class="send">💌 필요한 동료에게 보내기</div>'
+            f'<p class="mini">📌 저장 · ➕ 팔로우 @ayunfafa</p>'
+            f'<p class="note" style="max-width:600px">개인 기록이며 특정 상품의 매수를 권하지 않습니다 · 전체 계산은 프로필 링크</p></div>'
             f'{q}{foot(True)}</section>')
 
 
@@ -395,7 +438,7 @@ def render(spec: dict, out_dir: Path) -> list[Path]:
     parts = [slide_cover(spec["cover"], 1, total)]
     parts += [slide_mid(s, i + 2, total) for i, s in enumerate(spec["slides"])]
     parts.append(slide_close(spec["closing"], total, total))
-    doc = f"<!doctype html><html><head><meta charset='utf-8'><style>{CSS}</style></head><body>{''.join(parts)}</body></html>"
+    doc = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><style>{CSS}</style></head><body>{''.join(parts)}</body></html>"
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     with sync_playwright() as p:
