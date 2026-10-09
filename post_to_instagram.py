@@ -191,18 +191,27 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 - 문장은 짧게, 한 줄 16자 안팎. 줄바꿈은 | 로 의미 단위로.
 - 숫자·사실은 반드시 본문에 있는 것만. 투자 권유처럼 들리는 말 금지("사세요" ✕ → "저는 이렇게 해요" ○).
 
-[구성]
-1장 cover: 독자 일상 속 질문형 훅. (예: "월급 남는 돈,|대출 먼저 갚을까?")
-2장 = slides[0]: type "bignum", badge "💡 결론부터". 안 넘긴 사람에게 인스타가 2장을 다시 보여주므로 이 장만 봐도 결론이 보이게.
-3~5장 = slides[1..3]: 아래 type 중 골라 서로 다르게. 초보에게는 chat(대화형)과 cards가 가장 잘 읽힌다. 표(table)·막대(bars)는 꼭 필요할 때만, 최대 1장.
-6장 closing: 3줄 요약(저장할 이유).
+[구성: 8장 (내용이 부족하면 7장)]
+1장 cover: 독자 일상 속 질문 + 힌트. 최종 답은 절대 표지에 쓰지 않는다(답을 보면 넘길 이유가 사라짐).
+   단, 질문만 덩그러니 두지도 않는다. big에는 '힌트'(판단 기준의 개수, 반전 예고, 놀라운 숫자의 일부)를 넣는다.
+   예) 질문 "월급 남으면…|대출부터? 투자부터?" + big "기준은 딱 1개" / big "의외의 답" / big "숫자 하나로 끝"
+2장 = slides[0]: type "bignum", badge "💡 결론부터". 인스타는 1장에서 안 넘긴 사람에게 2장을 다시 보여준다.
+   그래서 topic(작은 주제 제목)을 꼭 넣어 2장만 봐도 '무슨 얘기 + 답'이 이해되게 한다.
+3장 = slides[1]: 공감·문제 — chat(대화형) 추천. "나도 이거 헷갈려" 상황.
+4장 = slides[2]: 원인·원리 — 왜 그 답인지 핵심 원리 1개 (cards 또는 compare).
+5장 = slides[3]: 기준·단계 — 내 상황에 대입하는 체크 기준 (steps).
+6장 = slides[4]: 예시 — 가상 인물 숫자 예시 1개 (compare, table, bars 중 하나. 숫자는 원문 것만).
+7장 = slides[5]: 흔한 실수·예외 — "이런 경우는 반대예요" (cards, 아이콘은 ⚠️/❌ 등). 내용이 부족하면 이 장을 생략해 slides를 5개로.
+마지막 closing: 3줄 요약 + 보내기.
+- 억지로 채운 빈 장보다 빼는 게 낫다. 각 장은 서로 다른 내용이어야 한다.
+- 1장의 질문에 대한 답을 2장에서 반드시 준다(낚시 금지). "공유하면 공개", "댓글 달면 알려줌" 같은 조건부 문구 절대 금지.
 
 [출력: JSON만, 코드블록 없이]
 {
  "point": "이번 캐러셀이 전달할 단 하나의 포인트(내부용, 한 문장)",
- "cover": {"badge": "카테고리 + 이모지", "context": "누구 얘기인지 일상어로 한 줄(최대 30자, 예: 대출 있는 직장인이 월급 남는 돈을 어디에 쓸지)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "핵심 숫자/한마디 최대 6자", "sub": "| 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 한마디 최대 10자", "save_sticker": true/false},
- "slides": [  // 정확히 4개, 첫 번째는 bignum
-   {"type": "bignum", "badge": "💡 결론부터", "title": "| 로 2줄", "value": "최대 6자", "label": "이 숫자가 뭔지 일상어로", "body": "1~2줄", "quokka": "쿼카 키"},
+ "cover": {"badge": "카테고리 + 이모지", "context": "누구 얘기인지 일상어로 한 줄(최대 30자, 예: 대출 있는 직장인이 월급 남는 돈을 어디에 쓸지)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "힌트(정답 금지), 최대 8자", "sub": "| 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 한마디 최대 10자", "save_sticker": true/false},
+ "slides": [  // 6개(또는 5개), 순서는 위 [구성] 그대로. 아래는 type별 형식 예시
+   {"type": "bignum", "badge": "💡 결론부터", "topic": "작은 주제 제목 최대 16자(예: 대출 vs 투자, 뭐부터?)", "title": "| 로 2줄", "value": "최대 6자", "label": "이 숫자가 뭔지 일상어로", "body": "1~2줄", "quokka": "쿼카 키"},
    {"type": "chat", "badge": "...", "title": "| 로 2줄", "lines": [{"who": "me", "text": "초보 독자의 솔직한 질문(최대 30자)"}, {"who": "quokka", "text": "쿼카의 쉬운 답(최대 40자)"}]},  // 3~5개 말풍선, me로 시작해서 반드시 quokka 답으로 끝낸다(질문으로 끝내지 않기)
    {"type": "cards", "badge": "...", "title": "...", "items": [{"icon": "이모지", "title": "최대 16자", "desc": "최대 30자, 일상어"}]},  // 2~3개
    {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "최대 16자", "desc": "최대 30자"}]},  // 3개, '오늘 해볼 것' 같은 행동 위주
@@ -230,7 +239,8 @@ REVIEW_PROMPT = """너는 아래 독자 본인이다: {reader}
 1. 모르는 단어가 하나라도 있나(상품명·은어 포함)? → 일상어로 바꾸거나 처음 나올 때 괄호 풀이.
 1-1. 대화형(chat)이 질문으로 끝나면 쿼카 답을 붙인다.
 2. 한 장에 숫자가 2개를 넘나? → 줄인다. 무슨 숫자인지 바로 알 수 있나?
-3. 1장만 봐도 "내 얘기다" 싶은가? 2장만 봐도 결론이 보이나?
+3. 1장만 봐도 "내 얘기다" 싶은가? 1장에 최종 답이 적혀 있으면 힌트로 바꾼다. 2장만 봐도 주제(topic)와 결론이 보이나?
+3-1. 내용이 겹치거나 억지로 채운 장이 있으면 지운다(최소 5개는 유지).
 4. 말투가 친한 선배 카톡처럼 편한가? 딱딱하거나 가르치는 말투면 고친다.
 5. 블로그 디테일을 너무 많이 넣지 않았나? 포인트 하나(point)에 집중하도록 덜어낸다.
 6. 숫자는 원문에 있는 것만인가? 원문에 없는 숫자는 삭제.
@@ -260,7 +270,7 @@ def review_spec(spec: dict, body: str) -> dict:
         raw = msg.content[0].text.strip()
         fixed = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
         assert fixed["cover"] and len(fixed["slides"]) >= 3 and fixed["closing"] and fixed["caption"]
-        fixed["slides"] = fixed["slides"][:4]
+        fixed["slides"] = fixed["slides"][:6]
         print("첫 독자 검토 반영 완료")
         return fixed
     except Exception as e:
@@ -279,7 +289,7 @@ def build_spec(title: str, category: str, body: str) -> dict:
         try:
             spec = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
             assert spec["cover"] and len(spec["slides"]) >= 3 and spec["closing"] and spec["caption"]
-            spec["slides"] = spec["slides"][:4]
+            spec["slides"] = spec["slides"][:6]
             if spec["slides"][0].get("type") != "bignum":
                 print("경고: 2장이 bignum이 아님 — 그대로 진행")
             return spec
@@ -397,6 +407,8 @@ tr.hl .g{color:var(--navy);background:rgba(255,255,255,.6)}
 .msg.qk .bub .g{color:var(--navy);background:linear-gradient(transparent 60%,rgba(255,215,106,.9) 60%)}
 .msg.me .bub .g{color:var(--navy);background:rgba(255,255,255,.6)}
 .av{width:86px;height:86px;object-fit:contain;flex:none;border-radius:50%;background:rgba(255,255,255,.12);padding:4px}
+.topic{margin-top:40px;font-size:34px;font-weight:800;color:var(--gold)}
+.topic+h2{margin-top:10px}
 .mini{margin-top:22px;font-size:32px;font-weight:700;color:var(--txt)}
 """
 
@@ -441,8 +453,19 @@ def top(badge, n, total) -> str:
     return f'<div class="top"><span class="badge">{t(badge)}</span><span class="pg">{n} / {total}</span></div>'
 
 
-def foot(last=False) -> str:
-    sw = "" if last else '<span class="swipe">넘기기 →</span>'
+def _next_label(badge) -> str:
+    b = re.sub(EMOJI, "", plain(badge)).strip()
+    return b[:10]
+
+
+def foot(last=False, nxt=None) -> str:
+    if last:
+        sw = ""
+    elif nxt:
+        lab = "넘겨서 답 보기" if "답 보기" in str(nxt) else "다음: " + _next_label(nxt)
+        sw = f'<span class="swipe">{t(lab)} →</span>'
+    else:
+        sw = '<span class="swipe">넘기기 →</span>'
     return f'<div class="foot"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사 <b>@ayunfafa</b>{sw}</div>'
 
 
@@ -457,7 +480,7 @@ def slide_cover(c, n, total, variant="navy") -> str:
     return (f'<section class="s {variant}">{top(c.get("badge"), n, total)}{sticker}'
             f'<div class="bd" style="max-width:920px">{ctx_chip(c)}<h1 style="{_fit(c.get("title"), 104, 10)}">{t(c.get("title"))}</h1>'
             f'<div class="big" style="{_fit(c.get("big"), 170, 5)}">{t(plain(c.get("big")))}</div>'
-            f'<p class="sub" style="max-width:600px">{t(c.get("sub"))}</p></div>{q}{bubble}{foot()}</section>')
+            f'<p class="sub" style="max-width:600px">{t(c.get("sub"))}</p></div>{q}{bubble}{foot(nxt="👉 답 보기")}</section>')
 
 
 def slide_body(s) -> str:
@@ -526,10 +549,11 @@ def slide_body(s) -> str:
     return f'<p class="sub">{t(s.get("body"))}</p>'
 
 
-def slide_mid(s, n, total) -> str:
+def slide_mid(s, n, total, nxt=None) -> str:
     q = quokka_img(s.get("quokka"), "qm") if s.get("type") in ("compare", "bignum") else ""
+    topic = f'<p class="topic">{t(s.get("topic"))}</p>' if s.get("topic") else ""
     return (f'<section class="s">{top(s.get("badge"), n, total)}'
-            f'<div class="bd"><h2>{t(s.get("title"))}</h2>{slide_body(s)}</div>{q}{foot()}</section>')
+            f'<div class="bd">{topic}<h2>{t(s.get("title"))}</h2>{slide_body(s)}</div>{q}{foot(nxt=nxt)}</section>')
 
 
 def slide_close(c, n, total) -> str:
@@ -550,7 +574,9 @@ def slide_close(c, n, total) -> str:
 def render(spec: dict, out_dir: Path, variant: str = "navy") -> list[Path]:
     total = len(spec["slides"]) + 2
     parts = [slide_cover(spec["cover"], 1, total, variant)]
-    parts += [slide_mid(s, i + 2, total) for i, s in enumerate(spec["slides"])]
+    sl = spec["slides"]
+    parts += [slide_mid(x, i + 2, total, sl[i + 1].get("badge") if i + 1 < len(sl) else "📝 3줄 요약")
+              for i, x in enumerate(sl)]
     parts.append(slide_close(spec["closing"], total, total))
     doc = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><style>{CSS}{CREAM_CSS}</style></head><body>{''.join(parts)}</body></html>"
     out_dir.mkdir(parents=True, exist_ok=True)
