@@ -543,7 +543,8 @@ def slide_body(s) -> str:
         out = '<div style="margin-top:34px">'
         for k, i in enumerate(s.get("items", [])[:4]):
             mark = f'<span class="num">{k + 1}</span>' if ty == "steps" else f'<span class="ic">{t(i.get("icon"))}</span>'
-            out += f'<div class="card"><div class="row">{mark}<div>{t(i.get("title"))}<small>{t(i.get("desc"))}</small></div></div></div>'
+            ttl = re.sub(r"^\s*\d+[.)]\s*", "", str(i.get("title") or "")) if ty == "steps" else i.get("title")
+            out += f'<div class="card"><div class="row">{mark}<div>{t(ttl)}<small>{t(i.get("desc"))}</small></div></div></div>'
         return out + "</div>"
     if ty == "compare":
         def side(d, hi):
