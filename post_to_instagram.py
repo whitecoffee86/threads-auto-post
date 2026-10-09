@@ -45,8 +45,8 @@ REFRESH_EVERY_DAYS = 7
 KST = timezone(timedelta(hours=9))
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-IG_USER_ID = os.environ["IG_USER_ID"]
-IG_SECRET_TOKEN = os.environ["IG_ACCESS_TOKEN"]
+IG_USER_ID = os.environ.get("IG_USER_ID", "")
+IG_SECRET_TOKEN = os.environ.get("IG_ACCESS_TOKEN", "")
 DRY_RUN = os.environ.get("IG_DRY_RUN") == "1"
 FORCE_URL = os.environ.get("IG_POST_URL", "").strip()
 
@@ -253,7 +253,7 @@ def _fit(text, base: int, max_chars: int) -> str:
 
 def slide_cover(c, n, total) -> str:
     return (f'<section class="s"><span class="badge">{t(c.get("badge"))}</span><span class="pg">{n}/{total}</span>'
-            f'<h1>{t(c.get("title"))}</h1><div class="big" style="{_fit(c.get('big'), 180, 6)}">{t(c.get("big"))}</div>'
+            f'<h1>{t(c.get("title"))}</h1><div class="big" style="{_fit(c.get("big"), 180, 6)}">{t(c.get("big"))}</div>'
             f'<p class="sub">{t(c.get("sub"))}</p>'
             f'<div class="foot"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사<span class="swipe">넘겨보세요 →</span></div></section>')
 
@@ -292,7 +292,7 @@ def slide_body(s) -> str:
                 f'<div class="card" style="border-color:#c9a84b"><div class="sub" style="margin:0">{t(R.get("label"))}</div><div class="n g">{t(R.get("value"))}</div></div></div>'
                 f'<p class="sub" style="margin-top:44px">{t(s.get("body"))}</p>')
     if ty == "bignum":
-        return (f'<div class="bn" style="{_fit(s.get('value'), 200, 6)}">{t(s.get("value"))}</div><p class="sub" style="font-size:40px;font-weight:700;color:#fff">{t(s.get("label"))}</p>'
+        return (f'<div class="bn" style="{_fit(s.get("value"), 200, 6)}">{t(s.get("value"))}</div><p class="sub" style="font-size:40px;font-weight:700;color:#fff">{t(s.get("label"))}</p>'
                 f'<p class="sub">{t(s.get("body"))}</p>')
     if ty == "steps":
         return '<div style="margin-top:36px">' + "".join(
@@ -408,6 +408,8 @@ def main():
         print("DRY RUN — 업로드하지 않고 종료합니다. (Actions 아티팩트에서 이미지 확인)")
         return
 
+    if not (IG_USER_ID and IG_SECRET_TOKEN):
+        raise RuntimeError("GitHub Secrets에 IG_USER_ID / IG_ACCESS_TOKEN이 없습니다")
     token = maybe_refresh(load_token(), h)
     save_history(h)  # 갱신 시각은 발행 실패와 무관하게 남김
     urls = push_images(paths)
