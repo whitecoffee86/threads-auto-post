@@ -61,6 +61,6 @@ jobs:
         if: always() && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
         run: |
           git add instagram_history.json
-          [ -f ig_token.enc ] && git add ig_token.enc
+          if [ -f ig_token.enc ]; then git add ig_token.enc; fi
           git diff --staged --quiet || git commit -m "인스타 발행 기록 업데이트"
           git pull --rebase origin main && git push
