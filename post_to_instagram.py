@@ -221,6 +221,7 @@ th{font-size:28px;color:#c9a84b;padding:18px 10px;text-align:right;font-weight:7
 th:first-child,td:first-child{text-align:left}
 td{padding:24px 10px;word-break:keep-all;border-top:1px solid rgba(255,255,255,.14);text-align:right;font-weight:700}
 tr.hl td{color:#1e2d4f;background:#c9a84b}
+tr.hl .g{color:#fff;font-weight:900}
 tr.hl td:first-child{border-radius:16px 0 0 16px} tr.hl td:last-child{border-radius:0 16px 16px 0}
 .note{font-size:24px;color:rgba(255,255,255,.5);margin-top:26px;line-height:1.5}
 .bar{display:flex;align-items:center;gap:20px;margin-top:30px;font-size:32px;font-weight:700}
