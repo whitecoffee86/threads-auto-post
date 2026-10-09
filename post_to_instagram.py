@@ -184,7 +184,7 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 
 [출력: JSON만, 코드블록 없이]
 {
- "cover": {"badge": "카테고리명 + 이모지", "context": "이 글의 상황·조건 한 줄, 최대 36자 (예: 월 100만원 · 대출 5,900만원(금리 5.5%) · 10년)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "가장 강한 숫자/결론, 최대 6자", "sub": "부연, | 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 감탄 한마디 최대 8자", "save_sticker": true/false (체크리스트·요약·표처럼 저장할 가치가 큰 글이면 true)},
+ "cover": {"badge": "카테고리명 + 이모지", "context": "이 글의 상황·조건 한 줄, 최대 36자 (예: 월 100만원 · 대출 5,900만원(금리 5.5%) · 10년)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "가장 강한 숫자/결론, 최대 6자", "sub": "부연, | 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 감탄 한마디 최대 10자", "save_sticker": true/false (체크리스트·요약·표처럼 저장할 가치가 큰 글이면 true)},
  "slides": [  // 정확히 4개, 첫 번째는 bignum
    {"type": "bignum", "badge": "💡 결론부터", "title": "| 로 2줄 이내", "value": "결론 숫자 최대 6자", "label": "숫자 설명 한 줄", "body": "이유 1~2줄", "quokka": "쿼카 키"},
    {"type": "table", "badge": "...", "title": "...", "explain": "👀 이 표 읽는 법 한 줄(최대 40자)", "headers": ["", "", ""], "rows": [["", "", ""]], "highlight": 행번호(0부터, 없으면 -1), "note": "※ 계산 근거 한 줄"},
@@ -326,7 +326,7 @@ h2{font-size:68px;line-height:1.28;font-weight:900;margin-top:46px;letter-spacin
   background:var(--yel);padding:6px 32px 14px;border-radius:28px;transform:rotate(-2deg);box-shadow:0 14px 0 var(--gold),0 24px 40px rgba(0,0,0,.35)}
 .sticker{position:absolute;right:70px;top:196px;background:#fff;color:var(--navy);font-weight:900;font-size:30px;padding:14px 24px;border-radius:18px;transform:rotate(6deg);box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .qc{position:absolute;right:-20px;bottom:100px;height:560px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
-.bubble{position:absolute;right:50px;bottom:650px;background:#fff;color:var(--navy);font-weight:900;font-size:36px;padding:18px 28px;border-radius:30px;box-shadow:0 10px 30px rgba(0,0,0,.3);white-space:nowrap}
+.bubble{position:absolute;right:50px;bottom:650px;background:#fff;color:var(--navy);font-weight:900;font-size:36px;padding:18px 28px;border-radius:30px;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:420px;text-align:center;line-height:1.3}
 .bubble::after{content:"";position:absolute;left:50%;bottom:-28px;border:16px solid transparent;border-top-color:#fff}
 .card{background:var(--card);border:1px solid rgba(255,255,255,.12);border-radius:28px;padding:30px 36px;margin-top:20px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 table{width:100%;border-collapse:separate;border-spacing:0;margin-top:44px;font-size:38px;background:var(--card);border-radius:24px;overflow:hidden}
@@ -403,7 +403,7 @@ def ctx_chip(c) -> str:
 def slide_cover(c, n, total) -> str:
     q = quokka_img(c.get("quokka") or "pointer_explain", "qc")
     bubble = f'<div class="bubble">{t(plain(c.get("bubble")))}</div>' if q and c.get("bubble") else ""
-    sticker = '<span class="sticker">📌 저장 필수</span>' if c.get("save_sticker") else ""
+    sticker = '<span class="sticker">📌 저장 필수</span>' if c.get("save_sticker") and not c.get("context") else ""
     return (f'<section class="s">{top(c.get("badge"), n, total)}{sticker}'
             f'<div class="bd" style="max-width:920px">{ctx_chip(c)}<h1 style="{_fit(c.get("title"), 104, 10)}">{t(c.get("title"))}</h1>'
             f'<div class="big" style="{_fit(c.get("big"), 170, 5)}">{t(plain(c.get("big")))}</div>'
