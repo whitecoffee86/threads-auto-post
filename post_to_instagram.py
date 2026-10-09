@@ -400,6 +400,26 @@ tr.hl .g{color:var(--navy);background:rgba(255,255,255,.6)}
 .mini{margin-top:22px;font-size:32px;font-weight:700;color:var(--txt)}
 """
 
+CREAM_CSS = """
+.s.cream{background:radial-gradient(900px 700px at 0% 0%,rgba(255,215,106,.35),transparent 60%),#FFF8EC;color:#1E2D4F}
+.s.cream::before{background-image:radial-gradient(rgba(30,45,79,.06) 2px,transparent 2px)}
+.s.cream h1{color:#1E2D4F;text-shadow:none}
+.s.cream .sub{color:#4a5675}
+.s.cream .ctx{background:rgba(30,45,79,.06);border-color:rgba(30,45,79,.12);color:#1E2D4F}
+.s.cream .ctx b{color:#b08a2e}
+.s.cream .pg{background:rgba(30,45,79,.08);color:#b08a2e}
+.s.cream .foot{color:#4a5675}
+.s.cream .bubble{background:#1E2D4F;color:#fff}
+.s.cream .bubble::after{border-top-color:#1E2D4F}
+"""
+
+
+def cover_variant(h: dict) -> str:
+    """표지 A/B: 직전 발행과 반대 색으로 번갈아 (기록 없던 초기 발행은 남색)."""
+    last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
+    return "navy" if last and last.get("cover") == "cream" else "cream"
+
+
 FIT_JS = """() => document.querySelectorAll('section.s').forEach(sec => {
   const bd = sec.querySelector('.bd'); if (!bd) return;
   const limit = sec.getBoundingClientRect().top + 1350 - 150;
@@ -430,11 +450,11 @@ def ctx_chip(c) -> str:
     return f'<div class="ctx"><b>👋 이런 분께</b><span>{t(c.get("context"))}</span></div>' if c.get("context") else ""
 
 
-def slide_cover(c, n, total) -> str:
+def slide_cover(c, n, total, variant="navy") -> str:
     q = quokka_img(c.get("quokka") or "pointer_explain", "qc")
     bubble = f'<div class="bubble">{t(plain(c.get("bubble")))}</div>' if q and c.get("bubble") else ""
     sticker = '<span class="sticker">📌 저장 필수</span>' if c.get("save_sticker") and not c.get("context") else ""
-    return (f'<section class="s">{top(c.get("badge"), n, total)}{sticker}'
+    return (f'<section class="s {variant}">{top(c.get("badge"), n, total)}{sticker}'
             f'<div class="bd" style="max-width:920px">{ctx_chip(c)}<h1 style="{_fit(c.get("title"), 104, 10)}">{t(c.get("title"))}</h1>'
             f'<div class="big" style="{_fit(c.get("big"), 170, 5)}">{t(plain(c.get("big")))}</div>'
             f'<p class="sub" style="max-width:600px">{t(c.get("sub"))}</p></div>{q}{bubble}{foot()}</section>')
@@ -527,12 +547,12 @@ def slide_close(c, n, total) -> str:
             f'{q}{foot(True)}</section>')
 
 
-def render(spec: dict, out_dir: Path) -> list[Path]:
+def render(spec: dict, out_dir: Path, variant: str = "navy") -> list[Path]:
     total = len(spec["slides"]) + 2
-    parts = [slide_cover(spec["cover"], 1, total)]
+    parts = [slide_cover(spec["cover"], 1, total, variant)]
     parts += [slide_mid(s, i + 2, total) for i, s in enumerate(spec["slides"])]
     parts.append(slide_close(spec["closing"], total, total))
-    doc = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><style>{CSS}</style></head><body>{''.join(parts)}</body></html>"
+    doc = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><style>{CSS}{CREAM_CSS}</style></head><body>{''.join(parts)}</body></html>"
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     with sync_playwright() as p:
@@ -618,7 +638,9 @@ def main():
     caption = re.sub(r"\n{3,}", "\n\n", cap).strip() + "\n\n" + " ".join(spec.get("hashtags", [])[:8])
     stamp = datetime.now(KST).strftime("%Y%m%d_%H%M")
     out_dir = IMAGES_ROOT / stamp
-    paths = render(spec, out_dir)
+    variant = cover_variant(h)
+    print(f"표지 버전: {variant}")
+    paths = render(spec, out_dir, variant)
     (out_dir / "caption.txt").write_text(caption, encoding="utf-8")
     (out_dir / "spec.json").write_text(json.dumps(spec, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"렌더링 완료: {len(paths)}장 → {out_dir}\n\n[캡션]\n{caption}\n")
@@ -639,7 +661,7 @@ def main():
     print(f"발행 완료! media_id={media_id}")
     h.setdefault("posted", []).append(post["link"])
     h.setdefault("log", []).append({"at": datetime.now(KST).isoformat(), "link": post["link"],
-                                    "title": title, "media_id": media_id, "images": stamp})
+                                    "title": title, "media_id": media_id, "images": stamp, "cover": variant})
     save_history(h)
 
 
