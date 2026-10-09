@@ -51,6 +51,28 @@ DRY_RUN = os.environ.get("IG_DRY_RUN") == "1"
 FORCE_URL = os.environ.get("IG_POST_URL", "").strip()
 
 
+QUOKKA_DIR = Path("assets/quokka")
+QUOKKA = {
+ "balance_scale": "저울(비교·균형)", "calculator_happy": "계산기(계산 결과)", "clipboard_check": "체크리스트",
+ "coins_jump_joy": "동전 들고 기쁨", "confident_thumbs": "엄지척(확신)", "currency_exchange": "달러·동전(환전·환율)",
+ "dividend_mailbox": "우편함에 배당", "drought_sad_phone": "가뭄 속 슬픔(하락장)", "eight_pots": "화분 8개(분할매수)",
+ "fence_calm": "평온", "harvest_gold_fruit": "황금 수확(수익 실현)", "jumping_joy_phone": "점프 환호(급등)",
+ "leaking_sack": "새는 돈자루(새는 비용·세금)", "magnifier_phone": "돋보기(분석·확인)", "paperwork_pile": "서류 더미(신고·복잡함)",
+ "phone_up_smile": "폰 들고 미소", "pointer_explain": "지시봉 설명", "pose_basket_cheer": "바구니 환호",
+ "pose_chest_cheer": "보물상자(큰 수익)", "pose_endure_eyes_closed": "눈 감고 버팀(존버)", "pose_falling_panic": "추락 패닉(폭락)",
+ "pose_fence_phone": "폰 확인", "pose_napping": "낮잠(장기 보유)", "pose_planting_coin": "동전 심기(투자 시작)",
+ "pose_rocket_ride": "로켓(급등·레버리지)", "pose_sad_sitting_phone": "앉아서 슬픔(손실)", "pose_standing_blush": "수줍음",
+ "pose_trophy_cheer": "트로피(성공)", "rate_stairs": "금리 계단 오름", "sad_red_chart": "빨간 차트(손실)",
+ "sad_walk_phone": "실망", "scissors_cut": "가위(손절·비용 절감)", "seed_qqq": "QQQ 씨앗", "seed_schd": "SCHD 씨앗",
+ "shock_closeup": "깜짝 놀람", "sleeping_dream": "꿈", "sowing_dark_sky": "어둠 속 씨뿌리기(하락장 매수)",
+ "spring_bounce": "스프링 반등", "stairs_down": "계단 내려감(하락·금리 인하)", "stopwatch_ready": "스톱워치(타이밍)",
+ "surprised_closed_weekend": "휴장 놀람", "tax_shock": "세금 고지서 충격", "thinking_question": "물음표 고민",
+ "three_piggy": "돼지저금통 3개(분산·저축)", "two_paths": "갈림길(선택)", "umbrella_shield": "우산(방어·안전자산)",
+ "vault_safe": "금고(안전·보관)", "waiting_moneybag": "돈자루 기다림(이자·배당)", "walking_sunset_back": "노을 걷기(마무리)",
+ "warning_sign": "경고", "watering_dca": "물주기(적립식)",
+}
+
+
 # ─── 기록 ──────────────────────────────────────────
 def load_history() -> dict:
     if HISTORY_FILE.exists():
@@ -149,7 +171,7 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 
 [출력: JSON만, 코드블록 없이]
 {
- "cover": {"badge": "카테고리명 + 이모지 1개", "title": "질문형 훅 2줄(<br>), 최대 26자", "big": "가장 강력한 숫자/결론 최대 8자", "sub": "부연 2줄, 최대 50자, 마지막에 반전/궁금증"},
+ "cover": {"badge": "카테고리명 + 이모지 1개", "title": "질문형 훅 2줄(<br>), 최대 22자", "big": "가장 강력한 숫자/결론 최대 7자", "sub": "부연 2줄, 최대 40자, 마지막에 반전/궁금증", "quokka": "쿼카 키", "bubble": "쿼카 말풍선 감탄 최대 9자 (예: 세금이 이만큼?!)"},
  "slides": [  // 정확히 4개
    {"type": "table", "badge": "...", "title": "...", "headers": ["", "", ""], "rows": [["", "", ""]], "highlight": 행번호(0부터, 없으면 -1), "note": "※ 계산 근거 한 줄"},
    {"type": "bars", "badge": "...", "title": "...", "sub": "...", "items": [{"label": "", "value": 숫자(음수 가능), "display": "표시 문자열"}], "takeaway": "👉 한 줄"},
@@ -158,10 +180,12 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
    {"type": "bignum", "badge": "...", "title": "...", "value": "", "label": "", "body": "1~2줄"},
    {"type": "steps", "badge": "...", "title": "...", "items": [{"title": "", "desc": ""}]}  // 3~4개
  ],
- "closing": {"badge": "🌿 WhiteCoffee의 관점", "title": "2줄 이내", "body": "1~2줄(본문의 필자 관점/경험이 있으면 그것)", "question": "💬 댓글을 부르는 질문 1개"},
+ "closing": {"badge": "🌿 WhiteCoffee의 관점", "title": "2줄 이내", "body": "1~2줄(본문의 필자 관점/경험이 있으면 그것)", "question": "댓글을 부르는 질문 1개(이모지 없이, 최대 30자)", "quokka": "쿼카 키(표지와 다른 것)"},
  "caption": "인스타 본문(태그 없이 일반 줄바꿈 \\n 사용). 1줄 훅 + 핵심 2~3줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💬 질문' (해시태그 제외, 링크 금지, 400자 이내)",
  "hashtags": ["#태그", "..."]   // 5~8개, 검색량 있는 한국어/종목 태그
 }
+compare·bignum 슬라이드에는 "quokka": "쿼카 키"를 넣을 수 있다(선택, 내용 분위기와 맞을 때만).
+쿼카 키 목록(내용 분위기에 맞게 고른다): {quokkas}
 표(table) rows는 최대 4행 4열, 각 칸은 8자 이내(긴 설명은 cards로), bars items는 3~6개. 각 title은 최대 2줄 22자 내외.
 
 [블로그 글]
@@ -174,7 +198,7 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 
 def build_spec(title: str, category: str, body: str) -> dict:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = PROMPT.replace("{title}", title).replace("{category}", category or "직장인 투자").replace("{body}", body)
+    prompt = PROMPT.replace("{title}", title).replace("{category}", category or "직장인 투자").replace("{body}", body).replace("{quokkas}", ", ".join(f"{k}={v}" for k, v in QUOKKA.items()))
     last_err = None
     for _ in range(2):
         msg = client.messages.create(model=MODEL, max_tokens=4000, messages=[{"role": "user", "content": prompt}])
@@ -199,48 +223,75 @@ def t(s) -> str:
     return re.sub(r"&lt;br\s*/?&gt;", "<br>", s)
 
 
+def plain(s) -> str:
+    return re.sub(r"<[^>]+>", "", str(s or ""))
+
+
+def quokka_img(key, cls: str) -> str:
+    path = QUOKKA_DIR / f"{key}.webp"
+    if not key or not path.exists():
+        return ""
+    b64 = base64.b64encode(path.read_bytes()).decode()
+    return f'<img class="{cls}" src="data:image/webp;base64,{b64}">'
+
+
 CSS = """
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;font-family:'Pretendard','Noto Sans CJK KR','Noto Sans KR',sans-serif;color:#fff}
-.s{width:1080px;height:1350px;background:#1e2d4f;position:relative;overflow:hidden;padding:90px 80px;display:flex;flex-direction:column}
-.s::before{content:"";position:absolute;width:700px;height:700px;border-radius:50%;border:2px solid rgba(201,168,75,.18);right:-260px;top:-260px}
-.s::after{content:"";position:absolute;width:420px;height:420px;border-radius:50%;background:rgba(201,168,75,.06);left:-160px;bottom:-160px}
-.badge{display:inline-block;align-self:flex-start;background:#c9a84b;color:#1e2d4f;font-weight:900;font-size:30px;padding:10px 26px;border-radius:40px}
-.pg{position:absolute;right:80px;top:96px;font-size:28px;color:rgba(255,255,255,.5);font-weight:700}
-.foot{position:absolute;left:80px;right:80px;bottom:64px;display:flex;align-items:center;gap:16px;font-size:26px;color:rgba(255,255,255,.7);font-weight:700}
-.logo{width:52px;height:52px;border-radius:50%;border:3px solid #c9a84b;color:#c9a84b;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;line-height:1;text-align:center}
-.swipe{margin-left:auto;color:#c9a84b}
-h1{font-size:84px;line-height:1.22;font-weight:900;margin-top:60px;letter-spacing:-2px}
-h2{font-size:64px;line-height:1.25;font-weight:900;margin-top:50px;letter-spacing:-1.5px}
-.g{color:#c9a84b}
-.sub{font-size:36px;color:rgba(255,255,255,.75);margin-top:28px;line-height:1.5;font-weight:500}
-.big{font-size:180px;font-weight:900;color:#c9a84b;letter-spacing:-6px;line-height:1.05;margin-top:50px}
-.card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:28px;padding:32px 40px;margin-top:22px}
-table{width:100%;border-collapse:collapse;margin-top:50px;font-size:36px}
-th{font-size:28px;color:#c9a84b;padding:18px 10px;text-align:right;font-weight:700}
+body{background:#111;font-family:'Pretendard','Noto Sans CJK KR','Noto Sans KR',sans-serif;color:#fff;word-break:keep-all}
+.s{width:1080px;height:1350px;position:relative;overflow:hidden;padding:90px 80px;display:flex;flex-direction:column;
+  background:radial-gradient(900px 700px at 0% 0%,rgba(201,168,75,.20),transparent 60%),
+             radial-gradient(800px 800px at 110% 105%,rgba(91,140,255,.16),transparent 60%),#1e2d4f}
+.s::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.06) 2px,transparent 2px);background-size:36px 36px;pointer-events:none}
+.s>*{position:relative}
+.top{display:flex;align-items:center;gap:16px}
+.badge{display:inline-block;background:#c9a84b;color:#1e2d4f;font-weight:900;font-size:30px;padding:10px 26px;border-radius:40px;box-shadow:0 6px 0 #8a7238}
+.pg{margin-left:auto;font-size:26px;color:rgba(255,255,255,.55);font-weight:800;background:rgba(255,255,255,.08);padding:8px 18px;border-radius:30px}
+.foot{position:absolute;left:80px;right:80px;bottom:60px;display:flex;align-items:center;gap:16px;font-size:26px;color:rgba(255,255,255,.75);font-weight:700}
+.logo{width:54px;height:54px;border-radius:50%;border:3px solid #c9a84b;color:#c9a84b;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;line-height:1;text-align:center;background:#1e2d4f}
+.swipe{margin-left:auto;color:#1e2d4f;background:#c9a84b;padding:10px 22px;border-radius:30px;font-weight:900}
+h1{font-size:86px;line-height:1.2;font-weight:900;margin-top:56px;letter-spacing:-2.5px;text-shadow:0 4px 18px rgba(0,0,0,.25)}
+h2{font-size:64px;line-height:1.24;font-weight:900;margin-top:46px;letter-spacing:-1.5px}
+.g{color:#ffd76a;background:linear-gradient(transparent 62%,rgba(201,168,75,.38) 62%);padding:0 4px;border-radius:4px}
+.sub{font-size:35px;color:rgba(255,255,255,.8);margin-top:26px;line-height:1.5;font-weight:500}
+.big{display:inline-block;align-self:flex-start;font-size:170px;font-weight:900;color:#1e2d4f;letter-spacing:-6px;line-height:1.08;margin-top:40px;
+  background:#ffd76a;padding:4px 30px 12px;border-radius:28px;transform:rotate(-2deg);box-shadow:0 14px 0 #c9a84b,0 24px 40px rgba(0,0,0,.35)}
+.sticker{position:absolute;right:70px;top:190px;background:#fff;color:#1e2d4f;font-weight:900;font-size:30px;padding:14px 24px;border-radius:18px;transform:rotate(6deg);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.qc{position:absolute;right:-20px;bottom:100px;height:600px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
+.bubble{position:absolute;right:50px;bottom:690px;background:#fff;color:#1e2d4f;font-weight:900;font-size:38px;padding:20px 30px;border-radius:30px;box-shadow:0 10px 30px rgba(0,0,0,.3);white-space:nowrap}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-28px;border:16px solid transparent;border-top-color:#fff}
+.card{background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.14);border-radius:28px;padding:30px 36px;margin-top:20px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+table{width:100%;border-collapse:separate;border-spacing:0;margin-top:44px;font-size:36px;background:rgba(255,255,255,.05);border-radius:24px;overflow:hidden}
+th{font-size:28px;color:#1e2d4f;background:#c9a84b;padding:20px 18px;text-align:right;font-weight:900}
 th:first-child,td:first-child{text-align:left}
-td{padding:24px 10px;word-break:keep-all;border-top:1px solid rgba(255,255,255,.14);text-align:right;font-weight:700}
-tr.hl td{color:#1e2d4f;background:#c9a84b}
-tr.hl .g{color:#fff;font-weight:900}
-tr.hl td:first-child{border-radius:16px 0 0 16px} tr.hl td:last-child{border-radius:0 16px 16px 0}
-.note{font-size:24px;color:rgba(255,255,255,.5);margin-top:26px;line-height:1.5}
-.bar{display:flex;align-items:center;gap:20px;margin-top:30px;font-size:32px;font-weight:700}
+td{padding:24px 18px;border-top:1px solid rgba(255,255,255,.1);text-align:right;font-weight:700}
+td.nw{white-space:nowrap}
+tr.hl td{color:#1e2d4f;background:#ffd76a;font-weight:900}
+tr.hl .g{color:#1e2d4f;background:rgba(255,255,255,.55)}
+.note{font-size:24px;color:rgba(255,255,255,.55);margin-top:24px;line-height:1.5}
+.bar{display:flex;align-items:center;gap:20px;margin-top:28px;font-size:32px;font-weight:700}
 .bar .l{width:230px}
-.bar .tr{flex:1;height:60px;position:relative}
-.bar .c{position:absolute;left:var(--z);top:-8px;bottom:-8px;width:2px;background:rgba(255,255,255,.3)}
-.bar .f{position:absolute;top:0;height:60px;border-radius:12px}
-.bar .v{width:210px;text-align:right}
-.neg{background:#e0675a}.pos{background:#c9a84b}
-.row{display:flex;gap:24px;align-items:flex-start;font-size:38px;line-height:1.45;font-weight:700}
-.row .ic{font-size:46px}
-.row small{display:block;font-size:28px;font-weight:500;color:rgba(255,255,255,.65)}
-.cmp{display:flex;gap:26px;margin-top:50px}
-.cmp .card{flex:1;text-align:center;margin-top:0}
-.cmp .n{font-size:96px;font-weight:900;letter-spacing:-3px;line-height:1.2}
-.num{width:64px;height:64px;border-radius:50%;background:#c9a84b;color:#1e2d4f;font-weight:900;font-size:34px;display:flex;align-items:center;justify-content:center;flex:none}
-.bn{font-size:200px;font-weight:900;color:#c9a84b;letter-spacing:-6px;line-height:1.05;margin-top:60px}
+.bar .tr{flex:1;height:62px;position:relative;background:rgba(255,255,255,.05);border-radius:14px}
+.bar .c{position:absolute;left:var(--z);top:-8px;bottom:-8px;width:3px;background:rgba(255,255,255,.35)}
+.bar .f{position:absolute;top:0;height:62px;border-radius:14px}
+.bar .v{width:210px;text-align:right;font-weight:900}
+.neg{background:linear-gradient(90deg,#ff8a7a,#e0675a)}.pos{background:linear-gradient(90deg,#c9a84b,#ffd76a)}
+.row{display:flex;gap:26px;align-items:center;font-size:38px;line-height:1.4;font-weight:800}
+.ic{width:84px;height:84px;flex:none;border-radius:24px;background:rgba(201,168,75,.18);display:flex;align-items:center;justify-content:center;font-size:48px}
+.row small{display:block;font-size:28px;font-weight:500;color:rgba(255,255,255,.7);margin-top:4px}
+.cmp{display:flex;gap:26px;margin-top:46px;align-items:stretch;position:relative}
+.cmp .card{flex:1;text-align:center;margin-top:0;padding:40px 20px}
+.cmp .vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:86px;height:86px;border-radius:50%;background:#e0675a;color:#fff;font-weight:900;font-size:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.cmp .n{font-size:92px;font-weight:900;letter-spacing:-3px;line-height:1.2;margin-top:10px}
+.num{width:72px;height:72px;border-radius:50%;background:#c9a84b;color:#1e2d4f;font-weight:900;font-size:36px;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 5px 0 #8a7238}
+.bn{font-size:200px;font-weight:900;color:#ffd76a;letter-spacing:-6px;line-height:1.05;margin-top:56px;text-shadow:0 10px 0 rgba(0,0,0,.2)}
+.qm{position:absolute;right:30px;bottom:120px;height:330px;filter:drop-shadow(0 14px 20px rgba(0,0,0,.4))}
+.qe{position:absolute;right:-20px;bottom:110px;height:500px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.45))}
+.ask{margin-top:40px;width:640px;background:#fff;color:#1e2d4f;border-radius:36px;padding:34px 40px;font-size:44px;font-weight:900;line-height:1.35;position:relative;box-shadow:0 14px 40px rgba(0,0,0,.3)}
+.ask::before{content:"💬";position:absolute;left:-18px;top:-30px;font-size:56px}
+.ask::after{content:"";position:absolute;right:-22px;top:60px;border:18px solid transparent;border-left-color:#fff}
+.cta{display:flex;gap:16px;margin-top:40px}
+.cta span{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:40px;padding:14px 24px;font-size:28px;font-weight:800}
 """
-
 
 FIT_JS = """() => document.querySelectorAll('section.s').forEach(sec => {
   const bd = sec.querySelector('.bd'); if (!bd) return;
@@ -252,21 +303,26 @@ FIT_JS = """() => document.querySelectorAll('section.s').forEach(sec => {
 })"""
 
 
-def foot(last=False) -> str:
-    sw = "" if last else '<span class="swipe">→</span>'
-    return f'<div class="foot"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사{sw}</div>'
-
-
 def _fit(text, base: int, max_chars: int) -> str:
-    n = len(re.sub(r"<[^>]+>", "", str(text or "")))
+    n = len(plain(text))
     return f"font-size:{base if n <= max_chars else int(base * max_chars / n)}px"
 
 
+def top(badge, n, total) -> str:
+    return f'<div class="top"><span class="badge">{t(badge)}</span><span class="pg">{n} / {total}</span></div>'
+
+
+def foot(last=False) -> str:
+    sw = "" if last else '<span class="swipe">넘기기 →</span>'
+    return f'<div class="foot"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사{sw}</div>'
+
+
 def slide_cover(c, n, total) -> str:
-    return (f'<section class="s"><span class="badge">{t(c.get("badge"))}</span><span class="pg">{n}/{total}</span>'
-            f'<h1>{t(c.get("title"))}</h1><div class="big" style="{_fit(c.get("big"), 180, 6)}">{t(c.get("big"))}</div>'
-            f'<p class="sub">{t(c.get("sub"))}</p>'
-            f'<div class="foot"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사<span class="swipe">넘겨보세요 →</span></div></section>')
+    q = quokka_img(c.get("quokka") or "pointer_explain", "qc")
+    bubble = f'<div class="bubble">{t(plain(c.get("bubble")))}</div>' if q and c.get("bubble") else ""
+    return (f'<section class="s">{top(c.get("badge"), n, total)}<span class="sticker">📌 저장 필수</span>'
+            f'<h1>{t(c.get("title"))}</h1><div class="big" style="{_fit(c.get("big"), 170, 5)}">{t(plain(c.get("big")))}</div>'
+            f'<p class="sub" style="max-width:640px">{t(c.get("sub"))}</p>{q}{bubble}{foot()}</section>')
 
 
 def slide_body(s) -> str:
@@ -276,11 +332,11 @@ def slide_body(s) -> str:
         nc = len(s.get("headers", [])) or 3
         s["rows"] = [(list(r[:nc - 1]) + [" ".join(map(str, r[nc - 1:]))]) if len(r) > nc else list(r) + [""] * (nc - len(r))
                      for r in s.get("rows", [])]
-        longest = max([len(str(x)) for r in s.get("rows", []) for x in r] + [0])
+        longest = max([len(plain(x)) for r in s.get("rows", []) for x in r] + [0])
         tstyle = ' style="font-size:30px"' if longest > 9 else ""
         head = "".join(f"<th>{t(x)}</th>" for x in s.get("headers", []))
         rows = "".join(
-            f'<tr class="{"hl" if i == hl else ""}">' + "".join(f"<td>{t(x)}</td>" for x in r) + "</tr>"
+            f'<tr class="{"hl" if i == hl else ""}">' + "".join(f'<td{" class=nw" if len(plain(x)) <= 6 else ""}>{t(x)}</td>' for x in r) + "</tr>"
             for i, r in enumerate(s.get("rows", [])[:5]))
         return f'<table{tstyle}><tr>{head}</tr>{rows}</table><p class="note">{t(s.get("note"))}</p>'
     if ty == "bars":
@@ -289,7 +345,7 @@ def slide_body(s) -> str:
         lo, hi = min(min(vals), 0), max(max(vals), 0)
         span = (hi - lo) or 1
         z = (0 - lo) / span * 100
-        out = f'<p class="sub">{t(s.get("sub"))}</p><div style="margin-top:30px">'
+        out = f'<p class="sub">{t(s.get("sub"))}</p><div class="card" style="margin-top:30px;padding:16px 30px 34px">'
         for i, v in zip(items, vals):
             w = abs(v) / span * 100
             pos = f"left:{z}%" if v >= 0 else f"right:{100 - z}%"
@@ -297,37 +353,41 @@ def slide_body(s) -> str:
             out += (f'<div class="bar"><span class="l">{t(i.get("label"))}</span>'
                     f'<span class="tr" style="--z:{z}%"><i class="c"></i><i class="f {cls}" style="{pos};width:{w}%"></i></span>'
                     f'<span class="v">{t(i.get("display"))}</span></div>')
-        return out + f'</div><p class="sub" style="font-size:32px;margin-top:44px">{t(s.get("takeaway"))}</p>'
+        return out + f'</div><p class="sub" style="font-size:33px;margin-top:36px;font-weight:700;color:#fff">{t(s.get("takeaway"))}</p>'
     if ty == "cards":
-        return '<div style="margin-top:36px">' + "".join(
+        return '<div style="margin-top:34px">' + "".join(
             f'<div class="card"><div class="row"><span class="ic">{t(i.get("icon"))}</span><div>{t(i.get("title"))}'
             f'<small>{t(i.get("desc"))}</small></div></div></div>' for i in s.get("items", [])[:4]) + "</div>"
     if ty == "compare":
         L, R = s.get("left", {}), s.get("right", {})
         return (f'<div class="cmp"><div class="card"><div class="sub" style="margin:0">{t(L.get("label"))}</div><div class="n">{t(L.get("value"))}</div></div>'
-                f'<div class="card" style="border-color:#c9a84b"><div class="sub" style="margin:0">{t(R.get("label"))}</div><div class="n g">{t(R.get("value"))}</div></div></div>'
-                f'<p class="sub" style="margin-top:44px">{t(s.get("body"))}</p>')
+                f'<div class="card" style="border:3px solid #ffd76a"><div class="sub" style="margin:0">{t(R.get("label"))}</div><div class="n" style="color:#ffd76a">{t(R.get("value"))}</div></div>'
+                f'<span class="vs">VS</span></div><p class="sub" style="margin-top:40px;max-width:{620 if s.get("quokka") else 920}px">{t(s.get("body"))}</p>')
     if ty == "bignum":
-        return (f'<div class="bn" style="{_fit(s.get("value"), 200, 6)}">{t(s.get("value"))}</div><p class="sub" style="font-size:40px;font-weight:700;color:#fff">{t(s.get("label"))}</p>'
-                f'<p class="sub">{t(s.get("body"))}</p>')
+        return (f'<div class="bn" style="{_fit(s.get("value"), 200, 6)}">{t(plain(s.get("value")))}</div>'
+                f'<p class="sub" style="font-size:42px;font-weight:800;color:#fff">{t(s.get("label"))}</p>'
+                f'<p class="sub" style="max-width:{620 if s.get("quokka") else 920}px">{t(s.get("body"))}</p>')
     if ty == "steps":
-        return '<div style="margin-top:36px">' + "".join(
+        return '<div style="margin-top:34px">' + "".join(
             f'<div class="card"><div class="row"><span class="num">{k + 1}</span><div>{t(i.get("title"))}'
             f'<small>{t(i.get("desc"))}</small></div></div></div>' for k, i in enumerate(s.get("items", [])[:4])) + "</div>"
     return f'<p class="sub">{t(s.get("body"))}</p>'
 
 
 def slide_mid(s, n, total) -> str:
-    return (f'<section class="s"><span class="badge">{t(s.get("badge"))}</span><span class="pg">{n}/{total}</span>'
-            f'<div class="bd"><h2>{t(s.get("title"))}</h2>{slide_body(s)}</div>{foot()}</section>')
+    q = quokka_img(s.get("quokka"), "qm") if s.get("type") in ("compare", "bignum") else ""
+    return (f'<section class="s">{top(s.get("badge"), n, total)}'
+            f'<div class="bd"><h2>{t(s.get("title"))}</h2>{slide_body(s)}</div>{q}{foot()}</section>')
 
 
 def slide_close(c, n, total) -> str:
-    return (f'<section class="s"><span class="badge">{t(c.get("badge"))}</span><span class="pg">{n}/{total}</span>'
-            f'<h2>{t(c.get("title"))}</h2><p class="sub" style="margin-top:44px">{t(c.get("body"))}</p>'
-            f'<h2 style="font-size:54px;margin-top:40px">{t(c.get("question"))}</h2>'
-            f'<p class="note" style="margin-top:40px">📌 저장해두고 필요할 때 꺼내 보세요 · 전체 계산은 프로필 링크<br>'
-            f'개인 기록이며 특정 상품의 매수를 권하지 않습니다</p>{foot(True)}</section>')
+    q = quokka_img(c.get("quokka") or "thinking_question", "qe")
+    return (f'<section class="s">{top(c.get("badge"), n, total)}'
+            f'<h2>{t(c.get("title"))}</h2><p class="sub" style="max-width:700px">{t(c.get("body"))}</p>'
+            f'<div class="ask">{t(plain(c.get("question")).lstrip("💬 "))}</div>'
+            f'<div class="cta"><span>📌 저장</span><span>🔁 공유</span><span>➕ 팔로우</span></div>'
+            f'<p class="note" style="margin-top:28px;max-width:640px">전체 계산은 프로필 링크 · 개인 기록이며 특정 상품의 매수를 권하지 않습니다</p>'
+            f'{q}{foot(True)}</section>')
 
 
 def render(spec: dict, out_dir: Path) -> list[Path]:
@@ -337,13 +397,12 @@ def render(spec: dict, out_dir: Path) -> list[Path]:
     parts.append(slide_close(spec["closing"], total, total))
     doc = f"<!doctype html><html><head><meta charset='utf-8'><style>{CSS}</style></head><body>{''.join(parts)}</body></html>"
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "carousel.html").write_text(doc, encoding="utf-8")
     paths = []
     with sync_playwright() as p:
         b = p.chromium.launch()
         pg = b.new_page(viewport={"width": 1080, "height": 1350})
         pg.set_content(doc)
-        pg.wait_for_timeout(600)
+        pg.wait_for_timeout(800)
         pg.evaluate(FIT_JS)
         for i, el in enumerate(pg.locator("section.s").all(), 1):
             path = out_dir / f"{i}.jpg"
