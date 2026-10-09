@@ -423,6 +423,9 @@ def main():
     print(f"렌더링 완료: {len(paths)}장 → {out_dir}\n\n[캡션]\n{caption}\n")
 
     if DRY_RUN:
+        if IG_USER_ID and IG_SECRET_TOKEN:
+            me = ig("GET", "me", load_token(), fields="user_id,username,account_type")
+            print(f"토큰 확인 OK: @{me.get('username')} ({me.get('account_type')}), id={me.get('user_id')}")
         print("DRY RUN — 업로드하지 않고 종료합니다. (Actions 아티팩트에서 이미지 확인)")
         return
 
