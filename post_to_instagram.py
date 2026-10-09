@@ -506,6 +506,11 @@ def publish_carousel(urls: list[str], caption: str, token: str) -> str:
 # ─── 메인 ──────────────────────────────────────────
 def main():
     h = load_history()
+    last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
+    if last and not FORCE_URL and not DRY_RUN and \
+            datetime.fromisoformat(last["at"]) > datetime.now(KST) - timedelta(hours=12):
+        print(f"최근 12시간 안에 이미 발행함({last['at']}) — 중복 방지로 건너뜀")
+        return
     post = pick_post(h)
     if not post:
         print("올릴 새 글이 없습니다.")
