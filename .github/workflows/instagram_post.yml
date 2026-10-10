@@ -2,7 +2,9 @@ name: 티스토리 → 인스타 캐러셀 자동 발행
 
 on:
   schedule:
-    - cron: '47 11 * * *'   # 매일 오후 8시 47분 KST
+    - cron: '47 11 * * *'   # 오후 8시 47분 KST
+    - cron: '17 12 * * *'   # 예비 9시 17분 (GitHub 예약 지연 대비, 중복은 코드가 막음)
+    - cron: '47 12 * * *'   # 예비 9시 47분
   workflow_dispatch:
     inputs:
       dry_run:

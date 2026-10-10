@@ -659,6 +659,10 @@ def publish_carousel(urls: list[str], caption: str, token: str) -> str:
 # ─── 메인 ──────────────────────────────────────────
 def main():
     h = load_history()
+    now = datetime.now(KST)
+    if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not (19 <= now.hour <= 23):
+        print(f"예약 실행이 너무 늦게 도착함({now:%H:%M}) — 저녁 시간대가 아니라 건너뜀")
+        return
     last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
     if last and not FORCE_URL and not DRY_RUN and \
             datetime.fromisoformat(last["at"]) > datetime.now(KST) - timedelta(hours=12):
