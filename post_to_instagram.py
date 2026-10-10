@@ -712,7 +712,7 @@ def reel_caption(meta: dict) -> str:
 
 
 def publish_reel(video: Path, caption: str, token: str, publish: bool = True) -> str:
-    c = ig("POST", f"{IG_USER_ID}/media", token, media_type="REELS", upload_type="resumable",
+    c = ig("POST", f"v23.0/{IG_USER_ID}/media", token, media_type="REELS", upload_type="resumable",
            caption=caption, share_to_feed="true")
     size = video.stat().st_size
     with open(video, "rb") as f:
