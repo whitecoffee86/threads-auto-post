@@ -41,7 +41,7 @@ jobs:
       - name: 패키지·한글 폰트 설치
         timeout-minutes: 10
         run: |
-          for i in 1 2 3; do sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-color-emoji && break; sleep 15; done
+          for i in 1 2 3; do sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-color-emoji ffmpeg && break; sleep 15; done
           pip install anthropic feedparser requests playwright cryptography
           playwright install --with-deps chromium
 
