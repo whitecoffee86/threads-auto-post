@@ -2,7 +2,8 @@
   "posted": [
     "https://ideas07576.tistory.com/320",
     "https://ideas07576.tistory.com/280",
-    "https://ideas07576.tistory.com/280"
+    "https://ideas07576.tistory.com/280",
+    "https://ideas07576.tistory.com/279"
   ],
   "token_refreshed_at": "2026-10-09T21:11:36.804664+09:00",
   "log": [
@@ -26,6 +27,14 @@
       "title": "대출 상환 vs 투자 비율 (월 100만원 10년 시뮬레이션)",
       "media_id": "18000226079812059",
       "images": "20261009_2201"
+    },
+    {
+      "at": "2026-10-10T21:02:30.691753+09:00",
+      "link": "https://ideas07576.tistory.com/279",
+      "title": "대출금리 몇 퍼센트부터 투자 손해일까 (손익 분기 계산기)",
+      "media_id": "18110671382185016",
+      "images": "20261010_2101",
+      "cover": "cream"
     }
   ]
 }
