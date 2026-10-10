@@ -711,21 +711,24 @@ def reel_caption(meta: dict) -> str:
     return cap + "\n\n" + " ".join(tags[:6])
 
 
-def publish_reel(video: Path, caption: str, token: str, publish: bool = True) -> str:
-    c = ig("POST", f"v23.0/{IG_USER_ID}/media", token, media_type="REELS", upload_type="resumable",
+def raw_url(branch: str, rel: str) -> str:
+    return f"https://raw.githubusercontent.com/{REPO}/{branch}/{rel}"
+
+
+def publish_reel(video_url: str, caption: str, token: str, publish: bool = True) -> str:
+    for _ in range(12):  # raw 서버 반영 대기
+        if requests.head(video_url, timeout=15).status_code == 200:
+            break
+        time.sleep(5)
+    c = ig("POST", f"{IG_USER_ID}/media", token, media_type="REELS", video_url=video_url,
            caption=caption, share_to_feed="true")
-    size = video.stat().st_size
-    with open(video, "rb") as f:
-        r = requests.post(c["uri"], data=f, timeout=300, headers={
-            "Authorization": f"OAuth {token}", "offset": "0", "file_size": str(size)})
-    if not r.ok:
-        raise RuntimeError(f"릴스 업로드 실패: {r.text[:300]}")
     for _ in range(60):  # 영상 처리는 최대 5분 대기
-        st = ig("GET", c["id"], token, fields="status_code").get("status_code")
+        st = ig("GET", c["id"], token, fields="status_code,status").get("status_code")
         if st == "FINISHED":
             break
         if st in ("ERROR", "EXPIRED"):
-            raise RuntimeError(f"릴스 처리 실패: {st}")
+            info = ig("GET", c["id"], token, fields="status")
+            raise RuntimeError(f"릴스 처리 실패: {st} {info}")
         time.sleep(5)
     else:
         raise RuntimeError("릴스 처리 시간 초과")
@@ -750,7 +753,8 @@ def run_reel(h: dict):
         print("DRY RUN — 릴스 업로드 안 함")
         return
     token = load_token()
-    media_id = publish_reel(item / "video.mp4", caption, token)
+    rel = (item / "video.mp4").relative_to(REELS_DIR).as_posix()
+    media_id = publish_reel(raw_url(REELS_BRANCH, rel), caption, token)
     print(f"릴스 발행 완료! media_id={media_id}")
     h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": item.name,
                                      "title": meta.get("title", ""), "media_id": media_id})
@@ -765,7 +769,19 @@ def reel_selftest():
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=0x1E2D4F:s=1080x1920:d=5",
                     "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-shortest",
                     "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(v)], check=True)
-    print(publish_reel(v, "test", load_token(), publish=False))
+    d = Path("/tmp/reel_test_repo")
+    subprocess.run(["rm", "-rf", str(d)])
+    d.mkdir()
+    subprocess.run(["cp", str(v), str(d / "test.mp4")], check=True)
+    url = f"https://x-access-token:{os.environ.get('GH_TOKEN', '')}@github.com/{REPO}.git"
+    for args in (["init", "-q"], ["checkout", "-q", "--orphan", "reel-test"], ["add", "-A"],
+                 ["-c", "user.name=github-actions", "-c", "user.email=actions@github.com", "commit", "-qm", "reel test"],
+                 ["push", "-f", url, "reel-test"]):
+        _git(*args, cwd=d)
+    try:
+        print(publish_reel(raw_url("reel-test", "test.mp4"), "test", load_token(), publish=False))
+    finally:
+        _git("push", url, "--delete", "reel-test", cwd=d, check=False)
 
 
 def main():
