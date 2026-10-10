@@ -11,6 +11,10 @@ on:
         description: '테스트 모드 (이미지만 만들고 업로드 안 함)'
         type: boolean
         default: true
+      reel_test:
+        description: '릴스 업로드 점검만 (게시 안 함)'
+        type: boolean
+        default: false
       post_url:
         description: '특정 티스토리 글 URL (비우면 자동 선택)'
         required: false
@@ -19,6 +23,9 @@ on:
 concurrency:
   group: repo-push
   cancel-in-progress: false
+
+permissions:
+  contents: write
 
 jobs:
   post:
@@ -50,6 +57,8 @@ jobs:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
           IG_POST_URL: ${{ inputs.post_url }}
+          IG_REEL_TEST: ${{ inputs.reel_test && '1' || '0' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python post_to_instagram.py
 
       - name: 테스트 결과 이미지 보관

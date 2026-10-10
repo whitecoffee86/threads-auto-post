@@ -656,13 +656,143 @@ def publish_carousel(urls: list[str], caption: str, token: str) -> str:
     return ig("POST", f"{IG_USER_ID}/media_publish", token, creation_id=parent)["id"]
 
 
+# ─── 릴스 (유튜브 쇼츠 원본 → 인스타 릴스) ─────────────
+# 영상 예약 작업이 reels-queue 브랜치(히스토리 없는 단일 커밋)에 queue/<날짜_slug>/{video.mp4, meta.json}을 올려 두면
+# 저녁 실행 때 가장 오래된 1개를 릴스로 올리고 큐에서 지운다.
+REELS_BRANCH = "reels-queue"
+REELS_DIR = Path("/tmp/reels_queue")
+
+REEL_CAPTION_PROMPT = """인스타 릴스 캡션을 쓴다. 독자: {reader}
+영상 정보(JSON): {meta}
+규칙: 친근한 존댓말, 공감 한 줄 + 핵심 1~2줄 + 빈 줄 + '📌 저장해두고 ~ 꺼내 보세요' + '💬 가볍게 답할 질문 1개'.
+숫자는 영상 정보에 있는 것만. 링크·해시태그 넣지 말 것. 250자 이내. 캡션 본문만 출력."""
+
+
+def _git(*args, cwd=None, check=True):
+    return subprocess.run(["git", *args], cwd=cwd, check=check, capture_output=True, text=True)
+
+
+def fetch_reels_queue() -> list[Path]:
+    subprocess.run(["rm", "-rf", str(REELS_DIR)])
+    url = f"https://x-access-token:{os.environ.get('GH_TOKEN', '')}@github.com/{REPO}.git" if os.environ.get("GH_TOKEN") \
+        else f"https://github.com/{REPO}.git"
+    r = subprocess.run(["git", "clone", "--depth", "1", "--branch", REELS_BRANCH, url, str(REELS_DIR)],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        print("릴스 대기열 없음")
+        return []
+    items = sorted(d for d in (REELS_DIR / "queue").glob("*") if (d / "video.mp4").exists())
+    print(f"릴스 대기열: {len(items)}개")
+    return items
+
+
+def remove_from_queue(item: Path):
+    subprocess.run(["rm", "-rf", str(item)])
+    (REELS_DIR / "queue").mkdir(exist_ok=True)
+    (REELS_DIR / "queue" / ".gitkeep").touch()
+    _git("config", "user.name", "github-actions", cwd=REELS_DIR)
+    _git("config", "user.email", "actions@github.com", cwd=REELS_DIR)
+    _git("checkout", "--orphan", "rq_new", cwd=REELS_DIR)
+    _git("add", "-A", cwd=REELS_DIR)
+    _git("commit", "-m", f"릴스 대기열: {item.name} 발행 후 제거", cwd=REELS_DIR)
+    _git("push", "-f", "origin", f"rq_new:{REELS_BRANCH}", cwd=REELS_DIR)
+
+
+def reel_caption(meta: dict) -> str:
+    try:
+        msg = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY).messages.create(
+            model=MODEL, max_tokens=600, messages=[{"role": "user", "content": REEL_CAPTION_PROMPT
+                .replace("{reader}", READER).replace("{meta}", json.dumps(meta, ensure_ascii=False))}])
+        cap = msg.content[0].text.strip()
+    except Exception as e:
+        print(f"릴스 캡션 생성 실패(제목 사용): {e}")
+        cap = meta.get("title", "")
+    tags = meta.get("hashtags") or ["#재테크", "#직장인재테크", "#투자공부"]
+    return cap + "\n\n" + " ".join(tags[:6])
+
+
+def publish_reel(video: Path, caption: str, token: str, publish: bool = True) -> str:
+    c = ig("POST", f"{IG_USER_ID}/media", token, media_type="REELS", upload_type="resumable",
+           caption=caption, share_to_feed="true")
+    size = video.stat().st_size
+    with open(video, "rb") as f:
+        r = requests.post(c["uri"], data=f, timeout=300, headers={
+            "Authorization": f"OAuth {token}", "offset": "0", "file_size": str(size)})
+    if not r.ok:
+        raise RuntimeError(f"릴스 업로드 실패: {r.text[:300]}")
+    for _ in range(60):  # 영상 처리는 최대 5분 대기
+        st = ig("GET", c["id"], token, fields="status_code").get("status_code")
+        if st == "FINISHED":
+            break
+        if st in ("ERROR", "EXPIRED"):
+            raise RuntimeError(f"릴스 처리 실패: {st}")
+        time.sleep(5)
+    else:
+        raise RuntimeError("릴스 처리 시간 초과")
+    if not publish:
+        return f"(테스트: 업로드·처리 성공, 게시 안 함) container={c['id']}"
+    return ig("POST", f"{IG_USER_ID}/media_publish", token, creation_id=c["id"])["id"]
+
+
+def run_reel(h: dict):
+    last = next((x for x in reversed(h.get("reels", [])) if x.get("media_id")), None)
+    if last and not DRY_RUN and datetime.fromisoformat(last["at"]) > datetime.now(KST) - timedelta(hours=12):
+        print("릴스: 최근 12시간 안에 이미 발행 — 건너뜀")
+        return
+    items = fetch_reels_queue()
+    if not items:
+        return
+    item = items[0]
+    meta = json.loads((item / "meta.json").read_text(encoding="utf-8")) if (item / "meta.json").exists() else {}
+    caption = reel_caption(meta)
+    print(f"릴스 대상: {item.name}\n[릴스 캡션]\n{caption}\n")
+    if DRY_RUN:
+        print("DRY RUN — 릴스 업로드 안 함")
+        return
+    token = load_token()
+    media_id = publish_reel(item / "video.mp4", caption, token)
+    print(f"릴스 발행 완료! media_id={media_id}")
+    h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": item.name,
+                                     "title": meta.get("title", ""), "media_id": media_id})
+    save_history(h)
+    remove_from_queue(item)
+
+
 # ─── 메인 ──────────────────────────────────────────
+def reel_selftest():
+    """릴스 업로드 경로 점검: 5초짜리 테스트 영상을 올려 처리까지만 확인하고 게시하지 않는다."""
+    v = Path("/tmp/reel_test.mp4")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=0x1E2D4F:s=1080x1920:d=5",
+                    "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-shortest",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(v)], check=True)
+    print(publish_reel(v, "test", load_token(), publish=False))
+
+
 def main():
+    if os.environ.get("IG_REEL_TEST") == "1":
+        return reel_selftest()
     h = load_history()
     now = datetime.now(KST)
     if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not (19 <= now.hour <= 23):
         print(f"예약 실행이 너무 늦게 도착함({now:%H:%M}) — 저녁 시간대가 아니라 건너뜀")
         return
+    errors = []
+    try:
+        run_carousel(h)
+    except Exception as e:
+        print(f"캐러셀 실패: {e}")
+        errors.append(e)
+    if os.environ.get("IG_SKIP_REELS") != "1":
+        try:
+            run_reel(load_history())
+        except Exception as e:
+            print(f"릴스 실패: {e}")
+            errors.append(e)
+    if errors:
+        raise RuntimeError(f"{len(errors)}개 단계 실패")
+
+
+def run_carousel(h: dict):
     last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
     if last and not FORCE_URL and not DRY_RUN and \
             datetime.fromisoformat(last["at"]) > datetime.now(KST) - timedelta(hours=12):
