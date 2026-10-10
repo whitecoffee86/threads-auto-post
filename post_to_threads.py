@@ -37,6 +37,9 @@ THREADS_TOKEN     = os.environ["THREADS_ACCESS_TOKEN"]
 KST = timezone(timedelta(hours=9))
 
 
+RECENT_POSTS_KEEP = 40  # 반복 방지용으로 기억할 최근 발행문 개수
+
+
 def load_data() -> dict:
     if Path(HISTORY_FILE).exists():
         with open(HISTORY_FILE) as f:
@@ -44,8 +47,9 @@ def load_data() -> dict:
             return {
                 "cycle_published": set(data.get("cycle_published", [])),
                 "short_term_done": set(data.get("short_term_done", [])),
+                "recent_posts": data.get("recent_posts", []),
             }
-    return {"cycle_published": set(), "short_term_done": set()}
+    return {"cycle_published": set(), "short_term_done": set(), "recent_posts": []}
 
 
 def save_data(data: dict):
@@ -53,6 +57,7 @@ def save_data(data: dict):
         json.dump({
             "cycle_published": list(data["cycle_published"]),
             "short_term_done": list(data["short_term_done"]),
+            "recent_posts": data.get("recent_posts", [])[-RECENT_POSTS_KEEP:],
         }, f, ensure_ascii=False, indent=2)
 
 
@@ -77,35 +82,93 @@ def fetch_rss() -> list:
     return posts
 
 
-def generate_threads_post(post: dict) -> str:
+# 스레드 전용 포맷 — 발행할 때마다 돌아가며 사용 (같은 틀의 글이 연달아 나가지 않게)
+POST_FORMATS = {
+    "opinion": (
+        "한 줄 의견형",
+        "첫 줄에 단정적인 내 주장 하나를 던지고(예: '직장인 단타가 안 되는 이유는 실력이 아니라 시간이다'), "
+        "왜 그렇게 생각하는지 내 경험·근거 2~3문장. 마지막은 '너넨 어때?'류의 짧은 질문.",
+    ),
+    "question": (
+        "질문형",
+        "첫 줄부터 독자에게 고르게 만드는 질문(A vs B, 너라면?). 내 선택과 이유를 2~3문장으로 밝히고, "
+        "다시 독자의 선택을 묻는 한 문장으로 마무리.",
+    ),
+    "confession": (
+        "실수·고백형",
+        "'나 예전에 이거 몰라서 손해 봤음' 같은 1인칭 고백으로 시작. 뭘 몰랐고 지금은 어떻게 하는지 2~3문장. "
+        "마지막은 '비슷한 경험 있어?' 같은 질문.",
+    ),
+    "number": (
+        "숫자 하나형",
+        "글에 실제로 나오는 숫자 하나를 첫 줄에 크게(예: '3년 방치하면 800만원 차이'). 그 숫자가 왜 중요한지 "
+        "내 생각 2~3문장. 마지막은 짧은 질문. 숫자는 절대 지어내지 말고 글에 없으면 의견형처럼 쓸 것.",
+    ),
+    "routine": (
+        "내 루틴형",
+        "'직장인인 나는 이렇게 한다'는 실제 행동 위주로. 출근길·점심·퇴근 후 같은 직장인 상황을 넣어 2~4문장. "
+        "마지막은 '너넨 언제 해?' 같은 질문.",
+    ),
+}
+FORMAT_ORDER = ["opinion", "question", "confession", "number", "routine"]
+
+# 투자 콘텐츠에서 나오면 안 되는 표현 (자본시장법·광고 리스크)
+RISKY_FINANCE_WORDS = ("수익 보장", "원금 보장", "무조건 오", "무조건 수익", "100% 수익", "매수 추천", "사세요", "꼭 사", "리딩")
+
+
+def pick_format(recent_posts: list) -> str:
+    """최근에 쓴 포맷과 겹치지 않게 다음 포맷을 순서대로 고름."""
+    if not recent_posts:
+        return FORMAT_ORDER[0]
+    last = recent_posts[-1].get("format")
+    if last in FORMAT_ORDER:
+        return FORMAT_ORDER[(FORMAT_ORDER.index(last) + 1) % len(FORMAT_ORDER)]
+    return FORMAT_ORDER[len(recent_posts) % len(FORMAT_ORDER)]
+
+
+def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = f"""아래 블로그 글의 핵심 내용을 바탕으로 스레드(Threads)에 올릴 글을 작성해줘.
+    fmt_name, fmt_rule = POST_FORMATS[fmt]
 
-글 제목: {post['title']}
-내용 요약: {post['summary']}
+    # 같은 원문으로 예전에 쓴 글 + 최근 발행문 → 같은 각도·같은 첫 문장 반복 금지
+    same_link = [r["text"] for r in recent_posts if r.get("link") == post["link"]][-3:]
+    latest = [r["text"] for r in recent_posts[-5:] if r.get("link") != post["link"]]
+    avoid_block = ""
+    if same_link or latest:
+        avoid_lines = "\n---\n".join(same_link + latest)
+        avoid_block = f"""
+[이미 올린 글들 — 이 글들과 첫 문장·주장·표현이 겹치면 안 됨]
+{avoid_lines}
+"""
+        if same_link:
+            avoid_block += "\n※ 위 글 중 일부는 같은 원문으로 쓴 거야. 이번엔 원문에서 '다른 포인트' 하나를 골라서 써.\n"
 
-스타일 가이드:
-- 직장인이 퇴근 후 알게 된 걸 친구에게 얘기하듯 자연스럽게. 홍보·광고 느낌 금지
-- "나도 처음엔 몰랐는데", "알고 보니", "생각보다" 같은 자연스러운 구어체 표현 활용
-- 독자가 "어? 이거 나 얘기네" 싶게 공감 포인트를 첫 문장에 넣기
-- 핵심 인사이트를 2~4문장으로 풀어서 설명 (단순 나열 금지)
-- 글 자체로 완결된 정보를 줄 것. 더 보라고 유도하지 말 것
+    prompt = f"""너는 재테크하는 30대 직장인 'WhiteCoffee'야. 스레드(Threads)에 직접 쓰는 짧은 글을 써줘.
+블로그 요약문이 아니라, 아래 글을 읽은 사람이 스레드에서 자기 생각을 툭 던지는 느낌이어야 해.
 
-형식:
-1. 첫 줄: 공감 또는 궁금증을 유발하는 후킹 문장 (이모지 1개 포함)
-2. 본문: 핵심 내용을 이야기하듯 3~5문장으로 풀어서 설명
-3. 마무리: 내 생각 한마디 또는 독자에게 가볍게 묻는 질문 한 문장
-4. 해시태그: 2~3개 (맨 마지막)
+[참고할 내 블로그 글]
+제목: {post['title']}
+내용: {post['summary']}
+{avoid_block}
+[이번 포맷: {fmt_name}]
+{fmt_rule}
 
-절대 금지 (하나라도 들어가면 안 됨):
+[작성 규칙]
+- 원문 내용을 요약하지 말고, 그중 핵심 포인트 '딱 하나'만 골라서 쓸 것
+- 1인칭 반말 구어체 ("~임", "~더라", "~함" OK). 친구한테 말하듯. 존댓말·홍보 톤 금지
+- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈
+- 전체 100~250자 (띄어쓰기 포함). 짧을수록 좋음
+- 마지막 줄은 독자가 댓글로 답하고 싶어지는 열린 질문 한 문장
+- 이모지는 0~1개
+- 해시태그는 맨 끝에 딱 1개만 (#재테크 #주식 #직장인투자 #ETF 중 글에 맞는 것)
+- 원문에 없는 숫자·사실은 지어내지 말 것
+- 특정 종목을 사라/팔라고 권하거나 수익을 장담하는 표현 금지
+
+[절대 금지]
 - URL, "링크", "프로필", "댓글", "블로그" 같은 단어
-- "정리해봤어요/정리해뒀어요", "올려뒀어요", "확인해보세요", "궁금하면" 같은 유도 문구
+- "정리해봤어", "올려뒀어", "확인해봐", "궁금하면" 같은 유도 문구
 
-조건:
-- 반드시 450자 이내 (띄어쓰기 포함, 이 조건 최우선)
-- 재테크/투자 관심 직장인 타깃
-
-본문만 출력해줘. 다른 말 없이."""
+본문만 출력해. 다른 말 없이."""
 
     msg = client.messages.create(
         model="claude-opus-4-5",
@@ -113,10 +176,22 @@ def generate_threads_post(post: dict) -> str:
         messages=[{"role": "user", "content": prompt}]
     )
 
-    text = remove_link_mentions(msg.content[0].text.strip())
+    text = remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))
     if len(text) > 490:
         text = text[:490]
     return text
+
+
+def remove_risky_sentences(text: str) -> str:
+    """수익 장담·매수 권유 같은 문장이 섞이면 그 문장만 제거."""
+    out = []
+    for line in text.split("\n"):
+        sentences = re.split(r"(?<=[.!?~])\s+", line)
+        kept = [s for s in sentences if not any(w in s for w in RISKY_FINANCE_WORDS)]
+        if len(kept) != len(sentences):
+            print(f"투자 권유성 문장 제거: {[s for s in sentences if s not in kept]}")
+        out.append(" ".join(kept))
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
 
 
 # 본문에 남으면 광고처럼 보이거나 사실과 달라지는 표현 (링크는 댓글로 따로 달림)
@@ -993,11 +1068,19 @@ def post_to_threads(text: str, link: str, image_url: str = None) -> bool:
     return True
 
 
-def publish_one(post: dict) -> bool:
+def with_utm(link: str, fmt: str) -> str:
+    """블로그 유입을 티스토리/GA에서 스레드발로 구분하기 위한 UTM 파라미터."""
+    sep = "&" if "?" in link else "?"
+    return f"{link}{sep}utm_source=threads&utm_medium=social&utm_campaign={fmt}"
+
+
+def publish_one(post: dict, data: dict) -> bool:
     print(f"\n처리 중: {post['title']} [{post.get('category', '')}]")
     try:
-        threads_text = generate_threads_post(post)
-        print(f"생성된 홍보글:\n{threads_text}\n")
+        recent = data.get("recent_posts", [])
+        fmt = pick_format(recent)
+        threads_text = generate_threads_post(post, recent, fmt)
+        print(f"포맷: {POST_FORMATS[fmt][0]}\n생성된 글:\n{threads_text}\n")
 
         image_url = make_card_image_url(post)
         if image_url:
@@ -1005,9 +1088,16 @@ def publish_one(post: dict) -> bool:
         else:
             print("카드 이미지 생성/업로드 실패 — 텍스트만 발행합니다.")
 
-        success = post_to_threads(threads_text, post["link"], image_url=image_url)
+        success = post_to_threads(threads_text, with_utm(post["link"], fmt), image_url=image_url)
         if success:
             print(f"발행 완료: {post['title']}")
+            recent.append({
+                "link": post["link"],
+                "format": fmt,
+                "text": threads_text,
+                "at": datetime.now(KST).isoformat(timespec="minutes"),
+            })
+            data["recent_posts"] = recent[-RECENT_POSTS_KEEP:]
         else:
             print(f"발행 실패: {post['title']}")
         return success
@@ -1031,7 +1121,7 @@ def main():
 
     if short_term_new and published_count < POSTS_PER_RUN:
         post = short_term_new[0]
-        if publish_one(post):
+        if publish_one(post, data):
             data["short_term_done"].add(post["link"])
             published_count += 1
 
@@ -1052,7 +1142,7 @@ def main():
             ]
 
         for post in cycle_candidates[:remaining]:
-            if publish_one(post):
+            if publish_one(post, data):
                 data["cycle_published"].add(post["link"])
                 published_count += 1
 
