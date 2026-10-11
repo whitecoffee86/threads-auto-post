@@ -1,7 +1,15 @@
 {
   "_설명": "자율 운영 모드에서 Claude가 매주 성과를 보고 조정하는 값. 사람 확인 없이 바뀔 수 있음. 바뀐 이유는 growth_log.md 참고.",
   "threads": {
-    "format_order": ["opinion", "question", "confession", "number", "routine"],
+    "link_mode": "off",
+    "link_every_n": 5,
+    "format_order": [
+      "opinion",
+      "question",
+      "confession",
+      "number",
+      "routine"
+    ],
     "standalone_every_n": 3,
     "card_image": "alternate"
   },

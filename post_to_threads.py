@@ -33,8 +33,6 @@ FONT = "'Pretendard', 'Noto Sans KR', 'Malgun Gothic', sans-serif"
 # "off": 링크 완전 배제 (2026-10-11~, 팔로워 5명에서 시작)
 # "on" : 내 글의 첫 답글에만 링크, LINK_EVERY_N개 중 1개 꼴로만
 # 재개 기준: 팔로워 100명 이상 또는 글당 답글이 꾸준히 붙을 때 (약 4주 뒤 점검)
-LINK_MODE    = os.environ.get("THREADS_LINK_MODE", "off").lower()
-LINK_EVERY_N = 5
 ACCOUNT_HANDLE = "@ayunfafa"
 
 # 자율 운영 설정 (growth_config.json — 매주 성과를 보고 조정됨)
@@ -42,6 +40,10 @@ try:
     _CFG = json.loads(Path("growth_config.json").read_text(encoding="utf-8")).get("threads", {})
 except Exception:
     _CFG = {}
+
+# 저장소 변수 THREADS_LINK_MODE가 있으면 그게 우선, 없으면 growth_config의 link_mode
+LINK_MODE    = (os.environ.get("THREADS_LINK_MODE") or _CFG.get("link_mode") or "off").lower()
+LINK_EVERY_N = int(_CFG.get("link_every_n", 5))
 
 # 블로그 글과 무관한 스레드 전용 글(일상·질문) 비율: N개 중 1개
 STANDALONE_EVERY_N = int(_CFG.get("standalone_every_n", 3))

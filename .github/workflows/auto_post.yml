@@ -36,8 +36,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
-          # 링크 정책: 저장소 Variables에 THREADS_LINK_MODE=on 을 넣으면 첫 답글 링크 재개 (기본 off)
-          THREADS_LINK_MODE: ${{ vars.THREADS_LINK_MODE || 'off' }}
+          # 링크 정책 기본은 growth_config.json 의 threads.link_mode. 저장소 Variables에 값을 넣으면 그게 우선
+          THREADS_LINK_MODE: ${{ vars.THREADS_LINK_MODE }}
         run: python post_to_threads.py
 
       - name: 발행 기록 저장
