@@ -3,7 +3,8 @@
     "https://ideas07576.tistory.com/320",
     "https://ideas07576.tistory.com/280",
     "https://ideas07576.tistory.com/280",
-    "https://ideas07576.tistory.com/279"
+    "https://ideas07576.tistory.com/279",
+    "https://ideas07576.tistory.com/324"
   ],
   "token_refreshed_at": "2026-10-09T21:11:36.804664+09:00",
   "log": [
@@ -35,6 +36,14 @@
       "media_id": "18110671382185016",
       "images": "20261010_2101",
       "cover": "cream"
+    },
+    {
+      "at": "2026-10-11T21:33:10.552467+09:00",
+      "link": "https://ideas07576.tistory.com/324",
+      "title": "물린 주식 갈아타기 해도 될까 — −20%면 어디서든 +25%가 필요하다",
+      "media_id": "18122716156904879",
+      "images": "20261011_2132",
+      "cover": "navy"
     }
   ]
 }
