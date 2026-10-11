@@ -7,6 +7,7 @@ import base64
 import hashlib
 import json
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -40,7 +41,7 @@ def get(path: str, **params):
     params["access_token"] = TOKEN
     r = requests.get(f"{GRAPH}/{path}", params=params, timeout=30)
     if not r.ok:
-        print(f"조회 실패 {path} {params.get('metric', '')}: {r.text[:200]}")
+        print(f"조회 실패 {path} {params.get('metric', '')}: {r.text[:200]}", file=sys.stderr)
         return None
     return r.json()
 

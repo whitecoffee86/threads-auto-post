@@ -5,6 +5,7 @@ threads_stats.json 에 주간 스냅샷을 쌓고, threads_report.md 에 사람�
 """
 import json
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -27,7 +28,7 @@ def get(path: str, **params):
     params["access_token"] = TOKEN
     res = requests.get(f"{API}/{path}", params=params, timeout=30)
     if res.status_code != 200:
-        print(f"조회 실패 {path}: {res.text[:300]}")
+        print(f"조회 실패 {path}: {res.text[:300]}", file=sys.stderr)
         return None
     return res.json()
 
@@ -52,7 +53,14 @@ def account_insights(since: datetime, until: datetime) -> dict:
     return out
 
 
+def others_replies(media_id: str, me: str) -> int:
+    """내가 단 답글(예전 링크 답글 등)을 뺀, 다른 사람이 단 답글 수."""
+    d = get(f"{media_id}/replies", fields="username", limit=100) or {}
+    return sum(1 for r in d.get("data", []) if r.get("username") and r.get("username") != me)
+
+
 def recent_posts(since: datetime) -> list:
+    me = (get("me", fields="username") or {}).get("username", "")
     data = get(f"{USER_ID}/threads", fields="id,text,timestamp,media_type", limit=50) or {}
     posts = []
     for p in data.get("data", []):
@@ -61,6 +69,9 @@ def recent_posts(since: datetime) -> list:
             continue
         ins = get(f"{p['id']}/insights", metric="views,likes,replies,reposts,quotes") or {}
         m = {i["name"]: metric_value(i) or 0 for i in ins.get("data", [])}
+        if me:
+            m["replies_raw"] = m.get("replies", 0)
+            m["replies"] = others_replies(p["id"], me)
         posts.append({
             "id": p["id"],
             "at": ts.astimezone(KST).isoformat(timespec="minutes"),
