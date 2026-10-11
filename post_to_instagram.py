@@ -41,6 +41,10 @@ REPO = "whitecoffee86/threads-auto-post"
 BRANCH = "main"
 GRAPH = "https://graph.instagram.com"
 MODEL = "claude-opus-4-5"
+try:  # 자율 운영 설정 (growth_config.json — 매주 성과를 보고 조정됨)
+    _CFG = json.loads(Path("growth_config.json").read_text(encoding="utf-8")).get("instagram", {})
+except Exception:
+    _CFG = {}
 REFRESH_EVERY_DAYS = 7
 KST = timezone(timedelta(hours=9))
 
@@ -170,7 +174,7 @@ def fetch_article_text(url: str) -> tuple[str, str]:
 
 
 # ─── Claude: 슬라이드 구성 ─────────────────────────
-READER = "투자를 막 시작한 2030 직장인(성별 무관). 주식 앱을 깔고 ETF를 몇 개 사봤거나, 적금만 하다 이제 투자를 해보려는 사람. 월급·적금·카드값은 익숙하지만 세금·금리·ETF 구조 같은 용어는 아직 낯설다."
+READER = _CFG.get("reader") or "투자를 막 시작한 2030 직장인(성별 무관). 주식 앱을 깔고 ETF를 몇 개 사봤거나, 적금만 하다 이제 투자를 해보려는 사람. 월급·적금·카드값은 익숙하지만 세금·금리·ETF 구조 같은 용어는 아직 낯설다."
 
 PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에디터다.
 [독자] {reader}
@@ -439,7 +443,9 @@ CREAM_CSS = """
 
 
 def cover_variant(h: dict) -> str:
-    """표지 A/B: 직전 발행과 반대 색으로 번갈아 (기록 없던 초기 발행은 남색)."""
+    """표지 A/B: 직전 발행과 반대 색으로 번갈아. growth_config의 cover_mode가 navy/cream이면 고정."""
+    if _CFG.get("cover_mode") in ("navy", "cream"):
+        return _CFG["cover_mode"]
     last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
     return "navy" if last and last.get("cover") == "cream" else "cream"
 

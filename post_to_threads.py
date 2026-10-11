@@ -37,8 +37,16 @@ LINK_MODE    = os.environ.get("THREADS_LINK_MODE", "off").lower()
 LINK_EVERY_N = 5
 ACCOUNT_HANDLE = "@ayunfafa"
 
+# 자율 운영 설정 (growth_config.json — 매주 성과를 보고 조정됨)
+try:
+    _CFG = json.loads(Path("growth_config.json").read_text(encoding="utf-8")).get("threads", {})
+except Exception:
+    _CFG = {}
+
 # 블로그 글과 무관한 스레드 전용 글(일상·질문) 비율: N개 중 1개
-STANDALONE_EVERY_N = 3
+STANDALONE_EVERY_N = int(_CFG.get("standalone_every_n", 3))
+# 블로그 기반 글의 카드 이미지: "always" / "alternate"(텍스트만인 글과 번갈아, A/B 비교용) / "never"
+CARD_IMAGE_MODE = _CFG.get("card_image", "alternate")
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
@@ -121,7 +129,8 @@ POST_FORMATS = {
         "마지막은 '너넨 언제 해?' 같은 질문.",
     ),
 }
-FORMAT_ORDER = ["opinion", "question", "confession", "number", "routine"]
+FORMAT_ORDER = [f for f in _CFG.get("format_order", []) if f in POST_FORMATS] or \
+    ["opinion", "question", "confession", "number", "routine"]
 
 # 투자 콘텐츠에서 나오면 안 되는 표현 (자본시장법·광고 리스크)
 RISKY_FINANCE_WORDS = ("수익 보장", "원금 보장", "무조건 오", "무조건 수익", "100% 수익", "매수 추천", "사세요", "꼭 사", "리딩")
@@ -1176,6 +1185,15 @@ def should_attach_link(recent_posts: list) -> bool:
     return since_last >= LINK_EVERY_N - 1
 
 
+def want_card_image(recent_posts: list) -> bool:
+    if CARD_IMAGE_MODE == "never":
+        return False
+    if CARD_IMAGE_MODE == "always":
+        return True
+    last_blog = next((r for r in reversed(recent_posts) if r.get("kind", "blog") == "blog"), None)
+    return not (last_blog and last_blog.get("image", True))
+
+
 def _record(data: dict, entry: dict):
     recent = data.get("recent_posts", [])
     entry["at"] = datetime.now(KST).isoformat(timespec="minutes")
@@ -1191,11 +1209,14 @@ def publish_one(post: dict, data: dict) -> bool:
         threads_text = generate_threads_post(post, recent, fmt)
         print(f"포맷: {POST_FORMATS[fmt][0]}\n생성된 글:\n{threads_text}\n")
 
-        image_url = make_card_image_url(post)
+        use_image = want_card_image(recent)
+        image_url = make_card_image_url(post) if use_image else None
         if image_url:
             print(f"카드 이미지 URL: {image_url}")
-        else:
+        elif use_image:
             print("카드 이미지 생성/업로드 실패 — 텍스트만 발행합니다.")
+        else:
+            print(f"이번 글은 텍스트만 (CARD_IMAGE_MODE={CARD_IMAGE_MODE})")
 
         attach = should_attach_link(recent)
         link = with_utm(post["link"], fmt) if attach else None
@@ -1205,7 +1226,7 @@ def publish_one(post: dict, data: dict) -> bool:
         if success:
             print(f"발행 완료: {post['title']}")
             _record(data, {"kind": "blog", "link": post["link"], "format": fmt,
-                           "text": threads_text, "linked": attach})
+                           "text": threads_text, "linked": attach, "image": bool(image_url)})
         else:
             print(f"발행 실패: {post['title']}")
         return success

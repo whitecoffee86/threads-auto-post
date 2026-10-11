@@ -1,0 +1,12 @@
+{
+  "_설명": "자율 운영 모드에서 Claude가 매주 성과를 보고 조정하는 값. 사람 확인 없이 바뀔 수 있음. 바뀐 이유는 growth_log.md 참고.",
+  "threads": {
+    "format_order": ["opinion", "question", "confession", "number", "routine"],
+    "standalone_every_n": 3,
+    "card_image": "alternate"
+  },
+  "instagram": {
+    "cover_mode": "alternate",
+    "reader": "투자를 막 시작한 2030 직장인(성별 무관). 주식 앱을 깔고 ETF를 몇 개 사봤거나, 적금만 하다 이제 투자를 해보려는 사람. 월급·적금·카드값은 익숙하지만 세금·금리·ETF 구조 같은 용어는 아직 낯설다."
+  }
+}
