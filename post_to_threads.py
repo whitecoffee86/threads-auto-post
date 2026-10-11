@@ -1259,8 +1259,34 @@ def publish_standalone(data: dict) -> bool:
         return False
 
 
+def late_schedule_guard(data):
+    """GitHub 예약 실행이 몇 시간씩 밀려 도착하는 문제 대비.
+    예약 실행일 때만: 새벽(0~6시)이거나 최근 3시간 안에 이미 올렸으면 건너뜀.
+    정시 발행은 외부(Claude 예약 작업)의 workflow_dispatch가 담당."""
+    if os.environ.get("GITHUB_EVENT_NAME") != "schedule":
+        return False
+    now = datetime.now(KST)
+    if 0 <= now.hour < 7:
+        print(f"⏭️ 예약 실행이 {now:%H:%M}에 늦게 도착 — 새벽이라 건너뜀")
+        return True
+    recent = data.get("recent_posts") or []
+    if recent:
+        try:
+            last = datetime.fromisoformat(recent[-1]["at"])
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=KST)
+            if now - last < timedelta(hours=3):
+                print(f"⏭️ 최근 발행({last:%H:%M})이 3시간 안이라 늦게 온 예약 실행 건너뜀")
+                return True
+        except Exception:
+            pass
+    return False
+
+
 def main():
     data = load_data()
+    if late_schedule_guard(data):
+        return
     published_count = 0
     today = datetime.now(KST).date()
     all_posts = fetch_rss()
