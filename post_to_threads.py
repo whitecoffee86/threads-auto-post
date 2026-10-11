@@ -29,6 +29,17 @@ BRAND_GOLD_LIGHT = "#e8cf8a"
 BRAND_GOLD_DIM = "#8a7238"
 FONT = "'Pretendard', 'Noto Sans KR', 'Malgun Gothic', sans-serif"
 
+# ── 링크 정책 (팔로워 성장 우선) ─────────────────────
+# "off": 링크 완전 배제 (2026-10-11~, 팔로워 5명에서 시작)
+# "on" : 내 글의 첫 답글에만 링크, LINK_EVERY_N개 중 1개 꼴로만
+# 재개 기준: 팔로워 100명 이상 또는 글당 답글이 꾸준히 붙을 때 (약 4주 뒤 점검)
+LINK_MODE    = os.environ.get("THREADS_LINK_MODE", "off").lower()
+LINK_EVERY_N = 5
+ACCOUNT_HANDLE = "@ayunfafa"
+
+# 블로그 글과 무관한 스레드 전용 글(일상·질문) 비율: N개 중 1개
+STANDALONE_EVERY_N = 3
+
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
 THREADS_TOKEN     = os.environ["THREADS_ACCESS_TOKEN"]
@@ -116,6 +127,81 @@ FORMAT_ORDER = ["opinion", "question", "confession", "number", "routine"]
 RISKY_FINANCE_WORDS = ("수익 보장", "원금 보장", "무조건 오", "무조건 수익", "100% 수익", "매수 추천", "사세요", "꼭 사", "리딩")
 
 
+PERSONA = (
+    "너는 'WhiteCoffee'야. 회사 다니면서 재테크하는 30대 직장인이고, 출퇴근 광역버스에서 시장을 확인함. "
+    "'주식농사'라는 이름으로 투자를 농사처럼 길게 봄. 단기로는 레버리지 ETF를 8개 계좌로 나눠 "
+    "분할매수·분할매도하고, 장기로는 ETF 적립식 포트폴리오를 굴림."
+)
+
+# 블로그와 무관한 스레드 전용 소재 — 같은 사람이 같은 주제로 말하되, 링크·원문 없이 완결
+STANDALONE_TOPICS = [
+    ("분할매수", "하락장에서 한 번에 안 사고 나눠 사는 이유, 그때의 마음가짐"),
+    ("직장인 루틴", "출근길·점심시간·퇴근 후 중 언제 시장을 보고 언제 안 보는지"),
+    ("멘탈", "계좌가 파랗게 물든 날 내가 하는 일과 하지 않는 일"),
+    ("레버리지", "레버리지 ETF를 오래 들고 가면 안 되는 이유에 대한 내 생각"),
+    ("현금 비중", "늘 현금을 일부 남겨두는 이유"),
+    ("매도", "사는 것보다 파는 게 어려운 이유, 나눠 파는 습관"),
+    ("적립식", "매달 같은 날 기계적으로 사는 장기 계좌 이야기"),
+    ("실수", "초보 때 했던 투자 실수 하나와 지금 바뀐 습관"),
+    ("직장인 vs 전업", "직장인이라서 오히려 유리한 투자 방식"),
+    ("시장 소음", "뉴스·유튜브 전망을 얼마나 믿는지"),
+    ("목표", "투자로 이루고 싶은 현실적인 목표와 숫자보다 중요한 것"),
+    ("질문", "팔로워에게 묻고 싶은 투자 습관 질문 하나 (예: 손절 기준 있는지)"),
+]
+
+
+def pick_standalone_topic(recent_posts: list) -> tuple:
+    used = [r.get("topic") for r in recent_posts if r.get("kind") == "standalone"]
+    for topic in STANDALONE_TOPICS:
+        if topic[0] not in used[-len(STANDALONE_TOPICS) + 1:]:
+            return topic
+    return STANDALONE_TOPICS[len(used) % len(STANDALONE_TOPICS)]
+
+
+def should_post_standalone(recent_posts: list) -> bool:
+    """최근 (N-1)개가 모두 블로그 기반이면 이번엔 스레드 전용 글."""
+    tail = recent_posts[-(STANDALONE_EVERY_N - 1):]
+    return len(tail) == STANDALONE_EVERY_N - 1 and all(r.get("kind") != "standalone" for r in tail)
+
+
+def generate_standalone_post(recent_posts: list, fmt: str, topic: tuple) -> str:
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    fmt_name, fmt_rule = POST_FORMATS[fmt]
+    latest = "\n---\n".join(r["text"] for r in recent_posts[-6:])
+    prompt = f"""{PERSONA}
+오늘은 블로그 글 없이, 스레드에만 올리는 짧은 혼잣말 같은 글을 써줘.
+
+[주제] {topic[0]} — {topic[1]}
+
+[이미 올린 글들 — 첫 문장·주장·표현이 겹치면 안 됨]
+{latest}
+
+[이번 포맷: {fmt_name}]
+{fmt_rule}
+
+[작성 규칙]
+- 1인칭 반말 구어체 ("~임", "~더라", "~함" OK). 친구한테 말하듯. 존댓말·홍보 톤 금지
+- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈
+- 전체 80~220자. 짧을수록 좋음
+- 마지막 줄은 독자가 자기 경험으로 답하고 싶어지는 열린 질문 한 문장
+- 이모지는 0~1개, 해시태그는 맨 끝에 딱 1개 (#재테크 #주식 #직장인투자 #ETF 중)
+- 구체적인 수익률·금액·날짜·종목 매매 결과는 지어내지 말 것 (생각·습관·태도 위주)
+- 특정 종목을 사라/팔라고 권하거나 수익을 장담하는 표현 금지
+- 숫자 하나형 포맷이면 실제 데이터 대신 '8개 계좌', '매달 같은 날'처럼 내 방식에 이미 있는 숫자만 사용
+
+[절대 금지]
+- URL, "링크", "프로필", "댓글", "블로그" 같은 단어
+
+본문만 출력해. 다른 말 없이."""
+    msg = client.messages.create(
+        model="claude-opus-4-5",
+        max_tokens=500,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))
+    return text[:490]
+
+
 def pick_format(recent_posts: list) -> str:
     """최근에 쓴 포맷과 겹치지 않게 다음 포맷을 순서대로 고름."""
     if not recent_posts:
@@ -143,8 +229,10 @@ def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
         if same_link:
             avoid_block += "\n※ 위 글 중 일부는 같은 원문으로 쓴 거야. 이번엔 원문에서 '다른 포인트' 하나를 골라서 써.\n"
 
-    prompt = f"""너는 재테크하는 30대 직장인 'WhiteCoffee'야. 스레드(Threads)에 직접 쓰는 짧은 글을 써줘.
-블로그 요약문이 아니라, 아래 글을 읽은 사람이 스레드에서 자기 생각을 툭 던지는 느낌이어야 해.
+    prompt = f"""{PERSONA}
+스레드(Threads)에 직접 쓰는 짧은 글을 써줘.
+블로그 요약문이 아니라, 아래 글을 바탕으로 스레드에서 자기 생각을 툭 던지는 느낌이어야 해.
+이 글만 읽어도 완결돼야 하고, 다른 곳으로 이동하라는 느낌이 조금도 없어야 해.
 
 [참고할 내 블로그 글]
 제목: {post['title']}
@@ -654,7 +742,7 @@ def _card_shell(hook: str, category: str, middle_html: str, extra_style: str = "
                         <div class="badge">{category}</div>
                         {'<div class="approx-note">* 본문 내용을 바탕으로 한 추정치</div>' if approx_note else ''}
                     </div>
-                    <div class="wordmark">ideas07576.tistory.com</div>
+                    <div class="wordmark">{ACCOUNT_HANDLE}</div>
                 </div>
             </div>
         </div>
@@ -909,7 +997,7 @@ def render_card_image(hook: str, category: str, out_path: Path):
                 </div>
                 <div class="footer">
                     <div class="badge">{category}</div>
-                    <div class="wordmark">ideas07576.tistory.com</div>
+                    <div class="wordmark">{ACCOUNT_HANDLE}</div>
                 </div>
             </div>
         </div>
@@ -1056,14 +1144,16 @@ def create_and_publish(text: str, reply_to_id: str = None, image_url: str = None
     return res2.json().get("id")
 
 
-def post_to_threads(text: str, link: str, image_url: str = None) -> bool:
+def post_to_threads(text: str, link: str | None = None, image_url: str = None) -> bool:
+    """본문 발행. link가 있을 때만 내 글의 첫 답글로 링크를 붙임 (LINK_MODE=on일 때만 전달됨)."""
     post_id = create_and_publish(text, image_url=image_url)
     if not post_id:
         return False
 
-    reply_id = create_and_publish(link, reply_to_id=post_id)
-    if not reply_id:
-        print("본문은 발행됐지만 링크 댓글 발행에 실패했습니다.")
+    if link:
+        reply_id = create_and_publish(link, reply_to_id=post_id)
+        if not reply_id:
+            print("본문은 발행됐지만 링크 답글 발행에 실패했습니다.")
 
     return True
 
@@ -1072,6 +1162,25 @@ def with_utm(link: str, fmt: str) -> str:
     """블로그 유입을 티스토리/GA에서 스레드발로 구분하기 위한 UTM 파라미터."""
     sep = "&" if "?" in link else "?"
     return f"{link}{sep}utm_source=threads&utm_medium=social&utm_campaign={fmt}"
+
+
+def should_attach_link(recent_posts: list) -> bool:
+    """LINK_MODE=on일 때만, 링크 없이 나간 글이 (N-1)개 쌓였으면 이번 글에 링크 답글."""
+    if LINK_MODE != "on":
+        return False
+    since_last = 0
+    for r in reversed(recent_posts):
+        if r.get("linked"):
+            break
+        since_last += 1
+    return since_last >= LINK_EVERY_N - 1
+
+
+def _record(data: dict, entry: dict):
+    recent = data.get("recent_posts", [])
+    entry["at"] = datetime.now(KST).isoformat(timespec="minutes")
+    recent.append(entry)
+    data["recent_posts"] = recent[-RECENT_POSTS_KEEP:]
 
 
 def publish_one(post: dict, data: dict) -> bool:
@@ -1088,19 +1197,40 @@ def publish_one(post: dict, data: dict) -> bool:
         else:
             print("카드 이미지 생성/업로드 실패 — 텍스트만 발행합니다.")
 
-        success = post_to_threads(threads_text, with_utm(post["link"], fmt), image_url=image_url)
+        attach = should_attach_link(recent)
+        link = with_utm(post["link"], fmt) if attach else None
+        print(f"링크 답글: {'첨부' if attach else '없음'} (LINK_MODE={LINK_MODE})")
+
+        success = post_to_threads(threads_text, link, image_url=image_url)
         if success:
             print(f"발행 완료: {post['title']}")
-            recent.append({
-                "link": post["link"],
-                "format": fmt,
-                "text": threads_text,
-                "at": datetime.now(KST).isoformat(timespec="minutes"),
-            })
-            data["recent_posts"] = recent[-RECENT_POSTS_KEEP:]
+            _record(data, {"kind": "blog", "link": post["link"], "format": fmt,
+                           "text": threads_text, "linked": attach})
         else:
             print(f"발행 실패: {post['title']}")
         return success
+    except Exception as e:
+        print(f"오류: {e}")
+        return False
+
+
+def publish_standalone(data: dict) -> bool:
+    """블로그와 무관한 스레드 전용 글 (텍스트만, 링크 없음)."""
+    try:
+        recent = data.get("recent_posts", [])
+        fmt = pick_format(recent)
+        topic = pick_standalone_topic(recent)
+        print(f"\n스레드 전용 글: 주제={topic[0]} / 포맷={POST_FORMATS[fmt][0]}")
+        text = generate_standalone_post(recent, fmt, topic)
+        print(f"생성된 글:\n{text}\n")
+        if not text:
+            return False
+        if post_to_threads(text):
+            print("발행 완료: 스레드 전용 글")
+            _record(data, {"kind": "standalone", "topic": topic[0], "format": fmt,
+                           "text": text, "linked": False})
+            return True
+        return False
     except Exception as e:
         print(f"오류: {e}")
         return False
@@ -1112,6 +1242,7 @@ def main():
     today = datetime.now(KST).date()
     all_posts = fetch_rss()
 
+    # 1) 오늘 올라온 단기투자(매매 일지) 글이 있으면 최우선
     short_term_new = [
         p for p in all_posts
         if p["category"] == SHORT_TERM_CATEGORY
@@ -1125,6 +1256,12 @@ def main():
             data["short_term_done"].add(post["link"])
             published_count += 1
 
+    # 2) 블로그 기반 글이 연달아 나갔으면 이번엔 스레드 전용 글
+    if published_count < POSTS_PER_RUN and should_post_standalone(data.get("recent_posts", [])):
+        if publish_standalone(data):
+            published_count += 1
+
+    # 3) 나머지는 블로그 글을 재료로 순환
     remaining = POSTS_PER_RUN - published_count
     if remaining > 0:
         cycle_candidates = [
