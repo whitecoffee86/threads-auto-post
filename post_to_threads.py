@@ -1117,12 +1117,28 @@ def wait_until_ready(container_id: str, max_wait_sec: int = 60, interval_sec: in
     return False
 
 
+def split_topic_tag(text: str) -> tuple:
+    """본문 끝의 해시태그를 떼어 (본문, 주제태그)로 돌려준다.
+    본문에 '#직장인투자'를 남기면 스레드가 글 맨 끝에 '직장인 투자' 단어로 보여주므로,
+    태그는 API의 topic_tag 로 따로 보낸다(사용자 이름 옆에 표시)."""
+    tags = re.findall(r"#([^\s#.&]+)", text)
+    body = re.sub(r"[ \t]*#[^\s#]+", "", text)
+    body = re.sub(r"[ \t]+\n", "\n", body)
+    body = re.sub(r"\n{3,}", "\n\n", body).strip()
+    tag = tags[-1][:50] if tags else None
+    return body, tag
+
+
 def create_and_publish(text: str, reply_to_id: str = None, image_url: str = None) -> str | None:
     """미디어 컨테이너 생성 → 상태 대기 → 발행. 성공 시 발행된 게시물 id 반환, 실패 시 None."""
     create_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}/threads"
     payload = {
         "access_token": THREADS_TOKEN,
     }
+    if not reply_to_id:
+        text, topic = split_topic_tag(text)
+        if topic:
+            payload["topic_tag"] = topic
     if image_url:
         payload["media_type"] = "IMAGE"
         payload["image_url"] = image_url
