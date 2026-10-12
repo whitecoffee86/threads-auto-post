@@ -14,6 +14,7 @@ from playwright.sync_api import sync_playwright
 # ── 설정 ──────────────────────────────────────────
 TISTORY_RSS   = "https://ideas07576.tistory.com/rss"
 POSTS_PER_RUN = 1
+DAILY_MAX_POSTS = 2  # 하루 최대 발행 수 (2026-10-12 사용자 지정: 하루 2개)
 HISTORY_FILE  = "published_history.json"
 SHORT_TERM_CATEGORY = "단기 투자"
 
@@ -1286,6 +1287,10 @@ def late_schedule_guard(data):
         print(f"⏭️ 예약 실행이 {now:%H:%M}에 늦게 도착 — 새벽이라 건너뜀")
         return True
     recent = data.get("recent_posts") or []
+    today = now.strftime("%Y-%m-%d")
+    if sum(1 for r in recent if str(r.get("at", "")).startswith(today)) >= DAILY_MAX_POSTS:
+        print(f"⏭️ 오늘 이미 {DAILY_MAX_POSTS}개 발행 — 늦게 온 예약 실행 건너뜀")
+        return True
     if recent:
         try:
             last = datetime.fromisoformat(recent[-1]["at"])
