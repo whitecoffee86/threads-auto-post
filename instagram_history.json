@@ -4,7 +4,8 @@
     "https://ideas07576.tistory.com/280",
     "https://ideas07576.tistory.com/280",
     "https://ideas07576.tistory.com/279",
-    "https://ideas07576.tistory.com/324"
+    "https://ideas07576.tistory.com/324",
+    "https://ideas07576.tistory.com/323"
   ],
   "token_refreshed_at": "2026-10-09T21:11:36.804664+09:00",
   "log": [
@@ -44,6 +45,14 @@
       "media_id": "18122716156904879",
       "images": "20261011_2132",
       "cover": "navy"
+    },
+    {
+      "at": "2026-10-12T20:48:02.291753+09:00",
+      "link": "https://ideas07576.tistory.com/323",
+      "title": "S&P500 ETF 국내상장 vs 미국상장 어디서 살까 — 상황별 선택표 5가지",
+      "media_id": "17875151772636299",
+      "images": "20261012_2047",
+      "cover": "cream"
     }
   ]
 }
