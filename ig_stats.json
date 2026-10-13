@@ -118,5 +118,86 @@
         "total_interactions": 0
       }
     ]
+  },
+  {
+    "week_ending": "2026-10-13",
+    "account": {
+      "username": "ayunfafa",
+      "followers_count": 0,
+      "media_count": 5,
+      "id": "28536335185989745"
+    },
+    "posts": [
+      {
+        "id": "17875151772636299",
+        "at": "2026-10-12T20:47+09:00",
+        "type": "FEED",
+        "cover": "cream",
+        "title": "S&P500 ETF 국내상장 vs 미국상장 어디서 살까 — 상황별 선택표 5가지",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "18122716156904879",
+        "at": "2026-10-11T21:33+09:00",
+        "type": "FEED",
+        "cover": "navy",
+        "title": "물린 주식 갈아타기 해도 될까 — −20%면 어디서든 +25%가 필요하다",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "18110671382185016",
+        "at": "2026-10-10T21:02+09:00",
+        "type": "FEED",
+        "cover": "cream",
+        "title": "대출금리 몇 퍼센트부터 투자 손해일까 (손익 분기 계산기)",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "18000226079812059",
+        "at": "2026-10-09T22:02+09:00",
+        "type": "FEED",
+        "cover": null,
+        "title": "대출 상환 vs 투자 비율 (월 100만원 10년 시뮬레이션)",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "18097852754436814",
+        "at": "2026-10-09T17:02+09:00",
+        "type": "FEED",
+        "cover": null,
+        "title": "SGOV 1억 넣으면 세후 월 28만원 💵",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      }
+    ]
   }
 ]
