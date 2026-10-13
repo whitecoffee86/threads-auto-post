@@ -5,7 +5,8 @@
     "https://ideas07576.tistory.com/280",
     "https://ideas07576.tistory.com/279",
     "https://ideas07576.tistory.com/324",
-    "https://ideas07576.tistory.com/323"
+    "https://ideas07576.tistory.com/323",
+    "https://ideas07576.tistory.com/327"
   ],
   "token_refreshed_at": "2026-10-09T21:11:36.804664+09:00",
   "log": [
@@ -53,6 +54,14 @@
       "media_id": "17875151772636299",
       "images": "20261012_2047",
       "cover": "cream"
+    },
+    {
+      "at": "2026-10-13T20:47:15.791229+09:00",
+      "link": "https://ideas07576.tistory.com/327",
+      "title": "테마 ETF 비중 몇 %가 적당할까 — 한 테마 5%, 합계 10% 규칙",
+      "media_id": "18103132343344003",
+      "images": "20261013_2046",
+      "cover": "navy"
     }
   ]
 }
