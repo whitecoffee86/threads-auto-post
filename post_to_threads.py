@@ -193,6 +193,7 @@ def generate_standalone_post(recent_posts: list, fmt: str, topic: tuple) -> str:
 [작성 규칙]
 - 1인칭 반말 구어체 ("~임", "~더라", "~함" OK). 친구한테 말하듯. 존댓말·홍보 톤 금지
 - 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황을 1인칭으로 던질 것 (예: '~하려던 사람 나야 나', '~샀는데 왜 마이너스지?', '~해야 하는 거 아냐?'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
+- 같은 틀 반복 금지: 위에 이미 올린 글에 나온 문장 틀('~한 사람 나야 나', 'A vs B, 너는?' 등)·소재(광역버스, 출근길/퇴근 후, 8개 계좌)는 이번 글에 쓰지 말 것. 첫 줄 시작 방식도 직전 글들과 다르게
 - 전체 80~220자. 짧을수록 좋음
 - 마지막 줄은 한 단어·숫자·A/B 중 하나로 3초 안에 답할 수 있는 질문 한 문장 (예: 'H 붙은 거 vs 안 붙은 거, 너는?', '손절 기준 있음 없음?'). '너넨 어때?' 같은 막연한 질문 금지
 - 이모지는 0~1개, 해시태그는 맨 끝에 딱 1개 (#재테크 #주식 #직장인투자 #ETF 중)
@@ -256,6 +257,7 @@ def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
 - 원문 내용을 요약하지 말고, 그중 핵심 포인트 '딱 하나'만 골라서 쓸 것
 - 1인칭 반말 구어체 ("~임", "~더라", "~함" OK). 친구한테 말하듯. 존댓말·홍보 톤 금지
 - 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황을 1인칭으로 던질 것 (예: '~하려던 사람 나야 나', '~샀는데 왜 마이너스지?', '~해야 하는 거 아냐?'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
+- 같은 틀 반복 금지: 위에 이미 올린 글에 나온 문장 틀('~한 사람 나야 나', 'A vs B, 너는?' 등)·소재(광역버스, 출근길/퇴근 후, 8개 계좌)는 이번 글에 쓰지 말 것. 첫 줄 시작 방식도 직전 글들과 다르게
 - 전체 100~250자 (띄어쓰기 포함). 짧을수록 좋음
 - 마지막 줄은 한 단어·숫자·A/B 중 하나로 3초 안에 답할 수 있는 질문 한 문장 (예: 'H 붙은 거 vs 안 붙은 거, 너는?', '손절 기준 있음 없음?'). '너넨 어때?' 같은 막연한 질문 금지
 - 이모지는 0~1개
@@ -1275,27 +1277,36 @@ def publish_standalone(data: dict) -> bool:
         return False
 
 
+DAILY_MAX_POSTS = 3          # 하루 최대 발행 수 (예약+수동 실행 합산)
+MIN_GAP_HOURS = 3.5          # 글 사이 최소 간격
+
+
 def late_schedule_guard(data):
-    """GitHub 예약 실행이 몇 시간씩 밀려 도착하는 문제 대비.
-    예약 실행일 때만: 새벽(0~6시)이거나 최근 3시간 안에 이미 올렸으면 건너뜀.
-    정시 발행은 외부(Claude 예약 작업)의 workflow_dispatch가 담당."""
-    if os.environ.get("GITHUB_EVENT_NAME") != "schedule":
-        return False
+    """발행량 가드. GitHub 예약 실행(schedule)과 외부 예약 작업(workflow_dispatch)이
+    둘 다 돌면서 하루 4~5개, 1~2시간 간격으로 몰려 나가던 문제 방지.
+    - 예약 실행이 새벽(0~6시)에 늦게 도착하면 건너뜀
+    - 실행 종류와 관계없이: 오늘(KST) 이미 DAILY_MAX_POSTS개 올렸거나,
+      마지막 글이 MIN_GAP_HOURS 안이면 건너뜀"""
     now = datetime.now(KST)
-    if 0 <= now.hour < 7:
+    if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and 0 <= now.hour < 7:
         print(f"⏭️ 예약 실행이 {now:%H:%M}에 늦게 도착 — 새벽이라 건너뜀")
         return True
-    recent = data.get("recent_posts") or []
-    if recent:
+    times = []
+    for r in data.get("recent_posts") or []:
         try:
-            last = datetime.fromisoformat(recent[-1]["at"])
-            if last.tzinfo is None:
-                last = last.replace(tzinfo=KST)
-            if now - last < timedelta(hours=3):
-                print(f"⏭️ 최근 발행({last:%H:%M})이 3시간 안이라 늦게 온 예약 실행 건너뜀")
-                return True
+            t = datetime.fromisoformat(r["at"])
+            times.append(t if t.tzinfo else t.replace(tzinfo=KST))
         except Exception:
             pass
+    if times:
+        last = max(times)
+        if now - last < timedelta(hours=MIN_GAP_HOURS):
+            print(f"⏭️ 최근 발행({last:%H:%M})이 {MIN_GAP_HOURS}시간 안이라 건너뜀")
+            return True
+        today_n = sum(1 for t in times if t.astimezone(KST).date() == now.date())
+        if today_n >= DAILY_MAX_POSTS:
+            print(f"⏭️ 오늘 이미 {today_n}개 발행 — 하루 최대 {DAILY_MAX_POSTS}개")
+            return True
     return False
 
 

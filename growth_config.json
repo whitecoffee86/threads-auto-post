@@ -11,7 +11,7 @@
       "routine"
     ],
     "standalone_every_n": 3,
-    "card_image": "alternate"
+    "card_image": "always"
   },
   "instagram": {
     "cover_mode": "alternate",
