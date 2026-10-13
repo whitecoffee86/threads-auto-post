@@ -1,46 +1,46 @@
 {
   "cycle_published": [
-    "https://ideas07576.tistory.com/317",
-    "https://ideas07576.tistory.com/310",
-    "https://ideas07576.tistory.com/312",
-    "https://ideas07576.tistory.com/279",
-    "https://ideas07576.tistory.com/318",
-    "https://ideas07576.tistory.com/309",
-    "https://ideas07576.tistory.com/311",
-    "https://ideas07576.tistory.com/308",
     "https://ideas07576.tistory.com/278",
+    "https://ideas07576.tistory.com/281",
+    "https://ideas07576.tistory.com/279",
     "https://ideas07576.tistory.com/280",
+    "https://ideas07576.tistory.com/308",
+    "https://ideas07576.tistory.com/310",
+    "https://ideas07576.tistory.com/316",
     "https://ideas07576.tistory.com/321",
+    "https://ideas07576.tistory.com/319",
+    "https://ideas07576.tistory.com/266",
+    "https://ideas07576.tistory.com/313",
+    "https://ideas07576.tistory.com/312",
+    "https://ideas07576.tistory.com/318",
+    "https://ideas07576.tistory.com/307",
+    "https://ideas07576.tistory.com/309",
     "https://ideas07576.tistory.com/322",
     "https://ideas07576.tistory.com/314",
+    "https://ideas07576.tistory.com/320",
     "https://ideas07576.tistory.com/326",
     "https://ideas07576.tistory.com/325",
-    "https://ideas07576.tistory.com/307",
-    "https://ideas07576.tistory.com/313",
-    "https://ideas07576.tistory.com/320",
-    "https://ideas07576.tistory.com/319",
-    "https://ideas07576.tistory.com/316",
-    "https://ideas07576.tistory.com/324",
     "https://ideas07576.tistory.com/323",
-    "https://ideas07576.tistory.com/281",
-    "https://ideas07576.tistory.com/266"
+    "https://ideas07576.tistory.com/324",
+    "https://ideas07576.tistory.com/317",
+    "https://ideas07576.tistory.com/311"
   ],
   "short_term_done": [
-    "https://ideas07576.tistory.com/219",
-    "https://ideas07576.tistory.com/226",
-    "https://ideas07576.tistory.com/328",
-    "https://ideas07576.tistory.com/251",
-    "https://ideas07576.tistory.com/284",
+    "https://ideas07576.tistory.com/297",
     "https://ideas07576.tistory.com/277",
-    "https://ideas07576.tistory.com/315",
+    "https://ideas07576.tistory.com/219",
     "https://ideas07576.tistory.com/296",
     "https://ideas07576.tistory.com/231",
-    "https://ideas07576.tistory.com/305",
+    "https://ideas07576.tistory.com/251",
+    "https://ideas07576.tistory.com/315",
     "https://ideas07576.tistory.com/221",
-    "https://ideas07576.tistory.com/297",
-    "https://ideas07576.tistory.com/293",
     "https://ideas07576.tistory.com/222",
-    "https://ideas07576.tistory.com/224"
+    "https://ideas07576.tistory.com/328",
+    "https://ideas07576.tistory.com/305",
+    "https://ideas07576.tistory.com/284",
+    "https://ideas07576.tistory.com/224",
+    "https://ideas07576.tistory.com/226",
+    "https://ideas07576.tistory.com/293"
   ],
   "recent_posts": [
     {
@@ -132,6 +132,14 @@
       "linked": false,
       "image": true,
       "at": "2026-10-13T19:02+09:00"
+    },
+    {
+      "kind": "standalone",
+      "topic": "레버리지",
+      "format": "question",
+      "text": "레버리지 ETF 장기 보유 vs 단기 매매, 너라면?\n\n나는 무조건 짧게 씀. 횡보장에서 녹는 거 직접 겪어봤음. 방향 맞춰도 수익 안 나고, 시간이 적이 되더라. 그래서 반등 나오면 바로 덜어내고, 오래 들고 가는 건 지수 ETF로만 함.\n\n레버리지 며칠 들고 감? 일주일 이내 / 한 달 이상\n\n#ETF",
+      "linked": false,
+      "at": "2026-10-14T07:58+09:00"
     }
   ]
 }
