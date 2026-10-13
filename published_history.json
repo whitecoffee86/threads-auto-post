@@ -1,45 +1,46 @@
 {
   "cycle_published": [
     "https://ideas07576.tistory.com/317",
-    "https://ideas07576.tistory.com/319",
-    "https://ideas07576.tistory.com/314",
-    "https://ideas07576.tistory.com/307",
-    "https://ideas07576.tistory.com/325",
     "https://ideas07576.tistory.com/310",
-    "https://ideas07576.tistory.com/281",
-    "https://ideas07576.tistory.com/316",
-    "https://ideas07576.tistory.com/266",
     "https://ideas07576.tistory.com/312",
-    "https://ideas07576.tistory.com/318",
-    "https://ideas07576.tistory.com/308",
     "https://ideas07576.tistory.com/279",
+    "https://ideas07576.tistory.com/318",
+    "https://ideas07576.tistory.com/309",
     "https://ideas07576.tistory.com/311",
+    "https://ideas07576.tistory.com/308",
+    "https://ideas07576.tistory.com/278",
     "https://ideas07576.tistory.com/280",
-    "https://ideas07576.tistory.com/323",
-    "https://ideas07576.tistory.com/324",
     "https://ideas07576.tistory.com/321",
     "https://ideas07576.tistory.com/322",
-    "https://ideas07576.tistory.com/278",
+    "https://ideas07576.tistory.com/314",
+    "https://ideas07576.tistory.com/326",
+    "https://ideas07576.tistory.com/325",
+    "https://ideas07576.tistory.com/307",
     "https://ideas07576.tistory.com/313",
     "https://ideas07576.tistory.com/320",
-    "https://ideas07576.tistory.com/309"
+    "https://ideas07576.tistory.com/319",
+    "https://ideas07576.tistory.com/316",
+    "https://ideas07576.tistory.com/324",
+    "https://ideas07576.tistory.com/323",
+    "https://ideas07576.tistory.com/281",
+    "https://ideas07576.tistory.com/266"
   ],
   "short_term_done": [
-    "https://ideas07576.tistory.com/284",
     "https://ideas07576.tistory.com/219",
-    "https://ideas07576.tistory.com/251",
-    "https://ideas07576.tistory.com/221",
     "https://ideas07576.tistory.com/226",
-    "https://ideas07576.tistory.com/296",
-    "https://ideas07576.tistory.com/277",
-    "https://ideas07576.tistory.com/222",
-    "https://ideas07576.tistory.com/293",
     "https://ideas07576.tistory.com/328",
-    "https://ideas07576.tistory.com/224",
+    "https://ideas07576.tistory.com/251",
+    "https://ideas07576.tistory.com/284",
+    "https://ideas07576.tistory.com/277",
     "https://ideas07576.tistory.com/315",
-    "https://ideas07576.tistory.com/305",
+    "https://ideas07576.tistory.com/296",
     "https://ideas07576.tistory.com/231",
-    "https://ideas07576.tistory.com/297"
+    "https://ideas07576.tistory.com/305",
+    "https://ideas07576.tistory.com/221",
+    "https://ideas07576.tistory.com/297",
+    "https://ideas07576.tistory.com/293",
+    "https://ideas07576.tistory.com/222",
+    "https://ideas07576.tistory.com/224"
   ],
   "recent_posts": [
     {
@@ -122,6 +123,15 @@
       "linked": false,
       "image": false,
       "at": "2026-10-13T11:58+09:00"
+    },
+    {
+      "kind": "blog",
+      "link": "https://ideas07576.tistory.com/326",
+      "format": "opinion",
+      "text": "ETF 상장폐지돼도 0원 안 됨.\n\n주식이랑 헷갈려서 휴지조각 될까봐 겁먹었는데, ETF는 순자산가치만큼 돌려받더라. 진짜 손해는 폐지 자체가 아니라 회복할 시간이 사라지는 거였음. 떨어진 상태에서 강제 정리되니까 반등 기회가 없음. 그래서 나는 순자산 50억 근처 ETF는 미리 정리함.\n\n상폐 경험 있음 없음?\n\n#ETF",
+      "linked": false,
+      "image": true,
+      "at": "2026-10-13T19:02+09:00"
     }
   ]
 }
