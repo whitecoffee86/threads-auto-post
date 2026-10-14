@@ -1,0 +1,42 @@
+name: 매일 이상 신호 수집 (스레드·인스타)
+
+# 주간 성과(threads_stats.yml)와 따로, 매일 아침 지난 7일 게시물 성과를 daily_*.json 에 쌓는다.
+# Claude 예약 작업 '스레드·인스타 매일 이상 점검'이 이걸 실행하고 읽는다. 전략 조정은 주간 작업 몫.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: repo-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests cryptography
+      - name: 스레드
+        env:
+          STATS_DAILY: '1'
+          THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+        run: python threads_stats.py >> "$GITHUB_STEP_SUMMARY" || echo "스레드 수집 실패"
+      - name: 인스타
+        env:
+          STATS_DAILY: '1'
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+        run: python ig_stats.py >> "$GITHUB_STEP_SUMMARY" || echo "인스타 수집 실패"
+      - name: 기록 저장
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A daily_threads_stats.json daily_threads_report.md daily_ig_stats.json daily_ig_report.md 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "매일 이상 신호 수집"
+          git pull --rebase --autostash origin main && git push

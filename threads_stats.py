@@ -15,8 +15,9 @@ KST = timezone(timedelta(hours=9))
 API = "https://graph.threads.net/v1.0"
 USER_ID = os.environ["THREADS_USER_ID"]
 TOKEN = os.environ["THREADS_ACCESS_TOKEN"]
-STATS_FILE = Path("threads_stats.json")
-REPORT_FILE = Path("threads_report.md")
+DAILY = os.environ.get("STATS_DAILY") == "1"  # 매일 이상 신호 점검용 — 주간 기록과 분리
+STATS_FILE = Path("daily_threads_stats.json" if DAILY else "threads_stats.json")
+REPORT_FILE = Path("daily_threads_report.md" if DAILY else "threads_report.md")
 HISTORY_FILE = Path("published_history.json")
 
 # 링크 재개 판단 기준
@@ -106,6 +107,8 @@ def main():
                            if s["account"].get("followers_count") is not None), None)
     snapshot = {"week_ending": now.date().isoformat(), "account": acct, "posts": posts}
     stats.append(snapshot)
+    if DAILY:
+        stats = stats[-14:]
     STATS_FILE.write_text(json.dumps(stats, ensure_ascii=False, indent=2))
 
     followers = acct.get("followers_count")

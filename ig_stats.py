@@ -19,8 +19,9 @@ GRAPH = "https://graph.instagram.com"
 SECRET = os.environ.get("IG_ACCESS_TOKEN", "")
 TOKEN_FILE = Path("ig_token.enc")
 HISTORY_FILE = Path("instagram_history.json")
-STATS_FILE = Path("ig_stats.json")
-REPORT_FILE = Path("ig_report.md")
+DAILY = os.environ.get("STATS_DAILY") == "1"  # 매일 이상 신호 점검용 — 주간 기록과 분리
+STATS_FILE = Path("daily_ig_stats.json" if DAILY else "ig_stats.json")
+REPORT_FILE = Path("daily_ig_report.md" if DAILY else "ig_report.md")
 
 
 def load_token() -> str:
@@ -88,6 +89,8 @@ def main():
     prev = next((s["account"].get("followers_count") for s in reversed(stats)
                  if s["account"].get("followers_count") is not None), None)
     stats.append({"week_ending": now.date().isoformat(), "account": me, "posts": posts})
+    if DAILY:
+        stats = stats[-14:]
     STATS_FILE.write_text(json.dumps(stats, ensure_ascii=False, indent=2))
 
     f = me.get("followers_count")
