@@ -768,6 +768,81 @@ def run_reel(h: dict):
     remove_from_queue(item)
 
 
+# ─── 슬라이드 릴스 (캐러셀 장표 → 세로 영상) ─────────────
+# 팔로워가 거의 없는 계정은 피드 캐러셀이 비팔로워에게 거의 노출되지 않는다(10/6~10/13 도달 0).
+# 같은 장표를 넘기는 세로 영상으로 만들어 릴스로도 올려, 비팔로워 노출 창구를 매일 하나 확보한다.
+# 영상 쇼츠(대기열)가 그날 올라갔으면 이건 건너뛴다(하루 릴스 1개).
+SLIDE_BRANCH = "reel-slides"
+SLIDE_SEC = 2.6      # 장표 1장 노출 시간
+COVER_SEC = 3.2      # 표지는 조금 더 길게
+FADE = 0.35
+
+
+def make_slideshow(paths: list[Path], out: Path) -> Path:
+    n = len(paths)
+    durs = [COVER_SEC] + [SLIDE_SEC] * (n - 1)
+    total = sum(durs) - FADE * (n - 1)
+    args = ["ffmpeg", "-y", "-loglevel", "error"]
+    for p, d in zip(paths, durs):
+        args += ["-loop", "1", "-t", f"{d + FADE:.2f}", "-i", str(p)]
+    # 잔잔한 패드 음악(직접 합성, 저작권 없음): C-E-G-B 화음 + 은은한 떨림, 앞뒤 페이드
+    tones = [130.81, 261.63, 329.63, 392.00, 493.88]
+    for f in tones:
+        args += ["-f", "lavfi", "-t", f"{total:.2f}", "-i", f"sine=frequency={f}:sample_rate=44100"]
+    fc = []
+    for i in range(n):  # 1080x1350 장표를 1080x1920 남색 바탕 가운데에
+        fc.append(f"[{i}:v]scale=1080:1350,pad=1080:1920:0:285:color=0x1E2D4F,setsar=1,fps=30,format=yuv420p[v{i}]")
+    last, off = "v0", 0.0
+    for i in range(1, n):
+        off += durs[i - 1] - FADE
+        fc.append(f"[{last}][v{i}]xfade=transition=slideleft:duration={FADE}:offset={off:.2f}[x{i}]")
+        last = f"x{i}"
+    a_in = "".join(f"[{n + k}:a]" for k in range(len(tones)))
+    fc.append(f"{a_in}amix=inputs={len(tones)}:normalize=1,tremolo=f=0.25:d=0.35,volume=0.5,"
+              f"afade=t=in:d=1.5,afade=t=out:st={max(total - 2, 0):.2f}:d=2,aformat=channel_layouts=stereo[a]")
+    args += ["-filter_complex", ";".join(fc), "-map", f"[{last}]", "-map", "[a]",
+             "-t", f"{total:.2f}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+             "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(out)]
+    subprocess.run(args, check=True)
+    return out
+
+
+def host_temp_video(video: Path) -> str:
+    """영상은 main 에 쌓지 않고, 히스토리 없는 임시 브랜치에 올려 URL 만 쓴다."""
+    d = Path("/tmp/reel_slides_repo")
+    subprocess.run(["rm", "-rf", str(d)])
+    d.mkdir()
+    subprocess.run(["cp", str(video), str(d / "reel.mp4")], check=True)
+    url = f"https://x-access-token:{os.environ.get('GH_TOKEN', '')}@github.com/{REPO}.git"
+    for args in (["init", "-q"], ["checkout", "-q", "--orphan", SLIDE_BRANCH], ["add", "-A"],
+                 ["-c", "user.name=github-actions", "-c", "user.email=actions@github.com", "commit", "-qm", "slide reel"],
+                 ["push", "-f", url, SLIDE_BRANCH]):
+        _git(*args, cwd=d)
+    return raw_url(SLIDE_BRANCH, "reel.mp4")
+
+
+def run_slide_reel(h: dict, carousel: dict | None):
+    if not carousel:
+        return
+    last = next((x for x in reversed(h.get("reels", [])) if x.get("media_id")), None)
+    if last and not DRY_RUN and datetime.fromisoformat(last["at"]) > datetime.now(KST) - timedelta(hours=12):
+        print("슬라이드 릴스: 오늘 이미 릴스가 올라감 — 건너뜀")
+        return
+    video = make_slideshow(carousel["paths"], carousel["out_dir"] / "reel.mp4")
+    print(f"슬라이드 릴스 영상: {video} ({video.stat().st_size // 1024}KB)")
+    lines = carousel["caption"].split("\n\n")
+    caption = carousel["caption"] if len(lines) < 2 else \
+        "\n\n".join(lines[:-1]) + "\n\n👉 장표로 천천히 보려면 프로필에서 같은 제목 게시물을 넘겨 보세요\n\n" + lines[-1]
+    if DRY_RUN:
+        print("DRY RUN — 슬라이드 릴스 업로드 안 함")
+        return
+    media_id = publish_reel(host_temp_video(video), caption, load_token())
+    print(f"슬라이드 릴스 발행 완료! media_id={media_id}")
+    h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": f"slides_{carousel['stamp']}",
+                                     "kind": "slides", "title": carousel["title"], "media_id": media_id})
+    save_history(h)
+
+
 # ─── 메인 ──────────────────────────────────────────
 def reel_selftest():
     """릴스 업로드 경로 점검: 5초짜리 테스트 영상을 올려 처리까지만 확인하고 게시하지 않는다."""
@@ -799,8 +874,9 @@ def main():
         print(f"예약 실행이 너무 늦게 도착함({now:%H:%M}) — 저녁 시간대가 아니라 건너뜀")
         return
     errors = []
+    carousel = None
     try:
-        run_carousel(h)
+        carousel = run_carousel(h)
     except Exception as e:
         print(f"캐러셀 실패: {e}")
         errors.append(e)
@@ -809,6 +885,11 @@ def main():
             run_reel(load_history())
         except Exception as e:
             print(f"릴스 실패: {e}")
+            errors.append(e)
+        try:  # 영상 쇼츠가 없던 날은 오늘 캐러셀을 슬라이드 릴스로도 올린다
+            run_slide_reel(load_history(), carousel)
+        except Exception as e:
+            print(f"슬라이드 릴스 실패: {e}")
             errors.append(e)
     if errors:
         raise RuntimeError(f"{len(errors)}개 단계 실패")
@@ -845,7 +926,7 @@ def run_carousel(h: dict):
             me = ig("GET", "me", load_token(), fields="user_id,username,account_type")
             print(f"토큰 확인 OK: @{me.get('username')} ({me.get('account_type')}), id={me.get('user_id')}")
         print("DRY RUN — 업로드하지 않고 종료합니다. (Actions 아티팩트에서 이미지 확인)")
-        return
+        return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp}
 
     if not (IG_USER_ID and IG_SECRET_TOKEN):
         raise RuntimeError("GitHub Secrets에 IG_USER_ID / IG_ACCESS_TOKEN이 없습니다")
@@ -858,6 +939,7 @@ def run_carousel(h: dict):
     h.setdefault("log", []).append({"at": datetime.now(KST).isoformat(), "link": post["link"],
                                     "title": title, "media_id": media_id, "images": stamp, "cover": variant})
     save_history(h)
+    return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp}
 
 
 if __name__ == "__main__":
