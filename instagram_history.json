@@ -6,7 +6,8 @@
     "https://ideas07576.tistory.com/279",
     "https://ideas07576.tistory.com/324",
     "https://ideas07576.tistory.com/323",
-    "https://ideas07576.tistory.com/327"
+    "https://ideas07576.tistory.com/327",
+    "https://ideas07576.tistory.com/329"
   ],
   "token_refreshed_at": "2026-10-09T21:11:36.804664+09:00",
   "log": [
@@ -62,6 +63,22 @@
       "media_id": "18103132343344003",
       "images": "20261013_2046",
       "cover": "navy"
+    },
+    {
+      "at": "2026-10-14T20:47:29.957096+09:00",
+      "link": "https://ideas07576.tistory.com/329",
+      "title": "나스닥 닷컴버블 회복 기간 — 꼭대기 일시금 15년, 매달 적립은 3년 10개월",
+      "media_id": "17962922313234039",
+      "images": "20261014_2046",
+      "cover": "cream"
+    }
+  ],
+  "reels": [
+    {
+      "at": "2026-10-14T20:48:02.254743+09:00",
+      "item": "20261013_kospi-crash-nextday",
+      "title": "코스피 급락 다음날 반등할까? 291번 세어보니 평소와 똑같았습니다",
+      "media_id": "18116912317813443"
     }
   ]
 }
