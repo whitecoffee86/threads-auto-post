@@ -1255,8 +1255,25 @@ def publish_one(post: dict, data: dict) -> bool:
         return False
 
 
+def make_standalone_image_url(text: str, label: str) -> str | None:
+    """스레드 전용 글용 후킹 문구 카드 (2026-10-15 매일 점검: 텍스트 글 조회 0대 → 이미지 붙임).
+    숫자 차트는 만들지 않음(글에 없는 숫자를 지어낼 수 있어서) — 후킹 문구 카드만."""
+    try:
+        IMAGES_DIR.mkdir(exist_ok=True)
+        out_path = IMAGES_DIR / f"{datetime.now(KST).strftime('%Y%m%d_%H%M%S')}_s.png"
+        first = next((l for l in text.splitlines() if l.strip()), text)[:80]
+        hook = html.escape(generate_card_hook({"title": first, "summary": text[:400]}))
+        render_card_image(hook, html.escape(label), out_path)
+        if not commit_and_push_image(out_path):
+            return None
+        return build_raw_url(out_path)
+    except Exception as e:
+        print(f"스레드 전용 글 카드 이미지 실패(텍스트만 발행): {e}")
+        return None
+
+
 def publish_standalone(data: dict) -> bool:
-    """블로그와 무관한 스레드 전용 글 (텍스트만, 링크 없음)."""
+    """블로그와 무관한 스레드 전용 글 (링크 없음, card_image 설정에 따라 후킹 카드)."""
     try:
         recent = data.get("recent_posts", [])
         fmt = pick_format(recent)
@@ -1266,10 +1283,12 @@ def publish_standalone(data: dict) -> bool:
         print(f"생성된 글:\n{text}\n")
         if not text:
             return False
-        if post_to_threads(text):
+        image_url = make_standalone_image_url(text, topic[0]) if want_card_image(recent) else None
+        print(f"카드 이미지: {image_url or '없음(텍스트만)'}")
+        if post_to_threads(text, image_url=image_url):
             print("발행 완료: 스레드 전용 글")
             _record(data, {"kind": "standalone", "topic": topic[0], "format": fmt,
-                           "text": text, "linked": False})
+                           "text": text, "linked": False, "image": bool(image_url)})
             return True
         return False
     except Exception as e:
@@ -1277,7 +1296,7 @@ def publish_standalone(data: dict) -> bool:
         return False
 
 
-DAILY_MAX_POSTS = 3          # 하루 최대 발행 수 (예약+수동 실행 합산)
+DAILY_MAX_POSTS = int(_CFG.get("daily_max_posts", 2))  # 하루 최대 발행 수 (예약+수동 실행 합산). 10/15 매일 점검: 3 → 2
 MIN_GAP_HOURS = 3.5          # 글 사이 최소 간격
 
 

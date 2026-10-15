@@ -2,7 +2,7 @@ name: 스레드 자동 발행 (링크 없는 스레드 전용 글)
 
 on:
   schedule:
-    - cron: '0 23 * * *'   # 오전 8시 KST
+    # 오전 8시 슬롯은 10/15 매일 점검에서 뺌 (하루 2개)
     - cron: '0 3 * * *'    # 오후 12시 KST
     - cron: '0 12 * * *'   # 오후 9시 KST
   workflow_dispatch:

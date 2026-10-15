@@ -11,7 +11,8 @@
       "routine"
     ],
     "standalone_every_n": 3,
-    "card_image": "always"
+    "card_image": "always",
+    "daily_max_posts": 2
   },
   "instagram": {
     "cover_mode": "alternate",
