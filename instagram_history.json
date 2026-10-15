@@ -7,7 +7,8 @@
     "https://ideas07576.tistory.com/324",
     "https://ideas07576.tistory.com/323",
     "https://ideas07576.tistory.com/327",
-    "https://ideas07576.tistory.com/329"
+    "https://ideas07576.tistory.com/329",
+    "https://ideas07576.tistory.com/326"
   ],
   "token_refreshed_at": "2026-10-09T21:11:36.804664+09:00",
   "log": [
@@ -71,6 +72,14 @@
       "media_id": "17962922313234039",
       "images": "20261014_2046",
       "cover": "cream"
+    },
+    {
+      "at": "2026-10-15T20:47:20.374971+09:00",
+      "link": "https://ideas07576.tistory.com/326",
+      "title": "ETF 상장폐지 되면 내 돈은 — 순자산 50억 기준과 상환금 받는 날",
+      "media_id": "18139184770724969",
+      "images": "20261015_2046",
+      "cover": "navy"
     }
   ],
   "reels": [
@@ -79,6 +88,12 @@
       "item": "20261013_kospi-crash-nextday",
       "title": "코스피 급락 다음날 반등할까? 291번 세어보니 평소와 똑같았습니다",
       "media_id": "18116912317813443"
+    },
+    {
+      "at": "2026-10-15T20:47:59.381681+09:00",
+      "item": "20261015_diversify-effective-count",
+      "title": "분산투자 7종목인데 실제론 4개도 안 됐습니다 (몇 개가 적당할까)",
+      "media_id": "18068873753509636"
     }
   ]
 }
