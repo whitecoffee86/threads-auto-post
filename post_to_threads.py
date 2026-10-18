@@ -1298,6 +1298,8 @@ def publish_standalone(data: dict) -> bool:
 
 DAILY_MAX_POSTS = int(_CFG.get("daily_max_posts", 2))  # 하루 최대 발행 수 (예약+수동 실행 합산). 10/15 매일 점검: 3 → 2
 MIN_GAP_HOURS = 3.5          # 글 사이 최소 간격
+SLOT_HOURS = (12, 21)        # 발행 슬롯(KST). auto_post.yml cron·'스레드 정시 발행' 예약과 맞춤
+SCHEDULE_LATE_HOURS = 2      # GitHub 예약 실행은 슬롯 뒤 이 시간 안에 도착했을 때만 발행
 
 
 def late_schedule_guard(data):
@@ -1307,8 +1309,10 @@ def late_schedule_guard(data):
     - 실행 종류와 관계없이: 오늘(KST) 이미 DAILY_MAX_POSTS개 올렸거나,
       마지막 글이 MIN_GAP_HOURS 안이면 건너뜀"""
     now = datetime.now(KST)
-    if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and 0 <= now.hour < 7:
-        print(f"⏭️ 예약 실행이 {now:%H:%M}에 늦게 도착 — 새벽이라 건너뜀")
+    if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not any(
+            h <= now.hour < h + SCHEDULE_LATE_HOURS for h in SLOT_HOURS):
+        # 10/19 주간 점검: 12시 예약이 16~17시에 도착해 21시 슬롯을 먹고 있었음 → 슬롯+2시간 밖이면 건너뜀
+        print(f"⏭️ 예약 실행이 {now:%H:%M}에 늦게 도착 — 발행 슬롯({SLOT_HOURS}시 +{SCHEDULE_LATE_HOURS}h) 밖이라 건너뜀")
         return True
     times = []
     for r in data.get("recent_posts") or []:

@@ -46,6 +46,9 @@ try:  # 자율 운영 설정 (growth_config.json — 매주 성과를 보고 조
 except Exception:
     _CFG = {}
 REFRESH_EVERY_DAYS = 7
+# 피드 캐러셀 빈도. "daily" | "alternate"(격일: 피드 캐러셀은 이틀에 한 번, 그 사이 날은 같은 방식으로 만든 장표를
+# 슬라이드 릴스로만 올림). 10/19 주간 점검: 팔로워 0 계정에서 피드 캐러셀 3주·13개 도달 전부 0, 릴스는 개당 ~120
+FEED_MODE = _CFG.get("feed_mode", "daily")
 KST = timezone(timedelta(hours=9))
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
@@ -831,7 +834,7 @@ def run_slide_reel(h: dict, carousel: dict | None):
     video = make_slideshow(carousel["paths"], carousel["out_dir"] / "reel.mp4")
     print(f"슬라이드 릴스 영상: {video} ({video.stat().st_size // 1024}KB)")
     lines = carousel["caption"].split("\n\n")
-    caption = carousel["caption"] if len(lines) < 2 else \
+    caption = carousel["caption"] if (len(lines) < 2 or carousel.get("feed") is False) else \
         "\n\n".join(lines[:-1]) + "\n\n👉 장표로 천천히 보려면 프로필에서 같은 제목 게시물을 넘겨 보세요\n\n" + lines[-1]
     if DRY_RUN:
         print("DRY RUN — 슬라이드 릴스 업로드 안 함")
@@ -840,6 +843,11 @@ def run_slide_reel(h: dict, carousel: dict | None):
     print(f"슬라이드 릴스 발행 완료! media_id={media_id}")
     h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": f"slides_{carousel['stamp']}",
                                      "kind": "slides", "title": carousel["title"], "media_id": media_id})
+    if carousel.get("feed") is False:  # 피드 쉬는 날 쓴 글도 다시 고르지 않게 기록
+        h.setdefault("posted", []).append(carousel["link"])
+        h.setdefault("log", []).append({"at": datetime.now(KST).isoformat(), "link": carousel["link"],
+                                        "title": carousel["title"], "images": carousel["stamp"],
+                                        "cover": carousel["cover"], "reel_only": True})
     save_history(h)
 
 
@@ -865,6 +873,17 @@ def reel_selftest():
         _git("push", url, "--delete", "reel-test", cwd=d, check=False)
 
 
+def is_feed_day(h: dict) -> bool:
+    """feed_mode=alternate 면 직전 피드 캐러셀이 어제(KST)였던 날은 릴스만 올린다."""
+    if FEED_MODE != "alternate" or FORCE_URL:
+        return True
+    last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
+    if not last:
+        return True
+    gap = (datetime.now(KST).date() - datetime.fromisoformat(last["at"]).astimezone(KST).date()).days
+    return gap >= 2
+
+
 def main():
     if os.environ.get("IG_REEL_TEST") == "1":
         return reel_selftest()
@@ -875,17 +894,26 @@ def main():
         return
     errors = []
     carousel = None
-    try:
-        carousel = run_carousel(h)
-    except Exception as e:
-        print(f"캐러셀 실패: {e}")
-        errors.append(e)
+    feed = is_feed_day(h)
+    print(f"오늘은 {'피드 캐러셀 + 릴스' if feed else '릴스만(피드 캐러셀 격일)'} 날")
+    if feed:
+        try:
+            carousel = run_carousel(h)
+        except Exception as e:
+            print(f"캐러셀 실패: {e}")
+            errors.append(e)
     if os.environ.get("IG_SKIP_REELS") != "1":
         try:
             run_reel(load_history())
         except Exception as e:
             print(f"릴스 실패: {e}")
             errors.append(e)
+        if not feed:
+            try:  # 피드를 쉬는 날: 장표만 만들어 슬라이드 릴스로 (영상 쇼츠가 이미 나갔으면 run_carousel 이 건너뜀)
+                carousel = run_carousel(load_history(), feed=False)
+            except Exception as e:
+                print(f"릴스용 장표 실패: {e}")
+                errors.append(e)
         try:  # 영상 쇼츠가 없던 날은 오늘 캐러셀을 슬라이드 릴스로도 올린다
             run_slide_reel(load_history(), carousel)
         except Exception as e:
@@ -895,7 +923,13 @@ def main():
         raise RuntimeError(f"{len(errors)}개 단계 실패")
 
 
-def run_carousel(h: dict):
+def run_carousel(h: dict, feed: bool = True):
+    if not feed:
+        last_reel = next((x for x in reversed(h.get("reels", [])) if x.get("media_id")), None)
+        if last_reel and not DRY_RUN and \
+                datetime.fromisoformat(last_reel["at"]) > datetime.now(KST) - timedelta(hours=12):
+            print("릴스만 올리는 날인데 최근 12시간 안에 릴스가 이미 올라감 — 장표 생성 건너뜀")
+            return
     last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
     if last and not FORCE_URL and not DRY_RUN and \
             datetime.fromisoformat(last["at"]) > datetime.now(KST) - timedelta(hours=12):
@@ -926,7 +960,11 @@ def run_carousel(h: dict):
             me = ig("GET", "me", load_token(), fields="user_id,username,account_type")
             print(f"토큰 확인 OK: @{me.get('username')} ({me.get('account_type')}), id={me.get('user_id')}")
         print("DRY RUN — 업로드하지 않고 종료합니다. (Actions 아티팩트에서 이미지 확인)")
-        return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp}
+        return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp,
+                "feed": feed, "link": post["link"], "cover": variant}
+    if not feed:  # 피드에는 안 올리고 슬라이드 릴스 재료로만 넘김(기록은 릴스 발행 성공 후)
+        return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp,
+                "feed": False, "link": post["link"], "cover": variant}
 
     if not (IG_USER_ID and IG_SECRET_TOKEN):
         raise RuntimeError("GitHub Secrets에 IG_USER_ID / IG_ACCESS_TOKEN이 없습니다")
