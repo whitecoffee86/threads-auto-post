@@ -518,5 +518,170 @@
         "total_interactions": 0
       }
     ]
+  },
+  {
+    "week_ending": "2026-10-18",
+    "account": {
+      "username": "ayunfafa",
+      "followers_count": 0,
+      "media_count": 14,
+      "id": "28536335185989745"
+    },
+    "posts": [
+      {
+        "id": "18129050164877275",
+        "at": "2026-10-17T20:48+09:00",
+        "type": "REELS",
+        "cover": null,
+        "title": "금리 오른다는 뉴스 보면",
+        "likes": 0,
+        "comments": 0,
+        "reach": 139,
+        "saved": 0,
+        "shares": 0,
+        "views": 142,
+        "total_interactions": 0
+      },
+      {
+        "id": "18193720630406712",
+        "at": "2026-10-17T20:47+09:00",
+        "type": "FEED",
+        "cover": "navy",
+        "title": "빚투 금리 오르면 어떻게 할까 (대출 투자 체크리스트 10)",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "17970754902172909",
+        "at": "2026-10-16T20:48+09:00",
+        "type": "REELS",
+        "cover": null,
+        "title": "AI ETF 오르는 거 보면 10년 묻어두고 싶죠.",
+        "likes": 0,
+        "comments": 0,
+        "reach": 107,
+        "saved": 0,
+        "shares": 0,
+        "views": 112,
+        "total_interactions": 0
+      },
+      {
+        "id": "18199240369381306",
+        "at": "2026-10-16T20:47+09:00",
+        "type": "FEED",
+        "cover": "cream",
+        "title": "테마 ETF 장기투자 해도 될까 — 출시 5년 뒤 수익률 30% 낮았다",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "18068873753509636",
+        "at": "2026-10-15T20:47+09:00",
+        "type": "REELS",
+        "cover": null,
+        "title": "7종목이면 분산 잘한 줄 알았는데요,",
+        "likes": 0,
+        "comments": 0,
+        "reach": 135,
+        "saved": 0,
+        "shares": 0,
+        "views": 140,
+        "total_interactions": 0
+      },
+      {
+        "id": "18139184770724969",
+        "at": "2026-10-15T20:47+09:00",
+        "type": "FEED",
+        "cover": "navy",
+        "title": "ETF 상장폐지 되면 내 돈은 — 순자산 50억 기준과 상환금 받는 날",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "18116912317813443",
+        "at": "2026-10-14T20:47+09:00",
+        "type": "REELS",
+        "cover": null,
+        "title": "어제 -3% 보고 오늘 반등할까 새벽까지 차트 본 적 있죠?",
+        "likes": 1,
+        "comments": 0,
+        "reach": 105,
+        "saved": 0,
+        "shares": 0,
+        "views": 109,
+        "total_interactions": 1
+      },
+      {
+        "id": "17962922313234039",
+        "at": "2026-10-14T20:47+09:00",
+        "type": "FEED",
+        "cover": "cream",
+        "title": "나스닥 닷컴버블 회복 기간 — 꼭대기 일시금 15년, 매달 적립은 3년 10개월",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "18103132343344003",
+        "at": "2026-10-13T20:47+09:00",
+        "type": "FEED",
+        "cover": "navy",
+        "title": "테마 ETF 비중 몇 %가 적당할까 — 한 테마 5%, 합계 10% 규칙",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "17875151772636299",
+        "at": "2026-10-12T20:47+09:00",
+        "type": "FEED",
+        "cover": "cream",
+        "title": "S&P500 ETF 국내상장 vs 미국상장 어디서 살까 — 상황별 선택표 5가지",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      },
+      {
+        "id": "18122716156904879",
+        "at": "2026-10-11T21:33+09:00",
+        "type": "FEED",
+        "cover": "navy",
+        "title": "물린 주식 갈아타기 해도 될까 — −20%면 어디서든 +25%가 필요하다",
+        "likes": 0,
+        "comments": 0,
+        "reach": 0,
+        "saved": 0,
+        "shares": 0,
+        "views": 0,
+        "total_interactions": 0
+      }
+    ]
   }
 ]
