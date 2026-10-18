@@ -10,7 +10,8 @@
     "https://ideas07576.tistory.com/329",
     "https://ideas07576.tistory.com/326",
     "https://ideas07576.tistory.com/325",
-    "https://ideas07576.tistory.com/282"
+    "https://ideas07576.tistory.com/282",
+    "https://ideas07576.tistory.com/333"
   ],
   "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
   "log": [
@@ -98,6 +99,14 @@
       "media_id": "18193720630406712",
       "images": "20261017_2047",
       "cover": "navy"
+    },
+    {
+      "at": "2026-10-18T20:47:56.078314+09:00",
+      "link": "https://ideas07576.tistory.com/333",
+      "title": "코스피 하락장 회복 기간 — 고점 대비 30% 빠진 5번, 회복 중간값 3.2년",
+      "media_id": "18119840428978809",
+      "images": "20261018_2047",
+      "cover": "cream"
     }
   ],
   "reels": [
@@ -126,6 +135,13 @@
       "kind": "slides",
       "title": "빚투 금리 오르면 어떻게 할까 (대출 투자 체크리스트 10)",
       "media_id": "18129050164877275"
+    },
+    {
+      "at": "2026-10-18T20:49:14.184187+09:00",
+      "item": "slides_20261018_2047",
+      "kind": "slides",
+      "title": "코스피 하락장 회복 기간 — 고점 대비 30% 빠진 5번, 회복 중간값 3.2년",
+      "media_id": "18124871573295911"
     }
   ]
 }
