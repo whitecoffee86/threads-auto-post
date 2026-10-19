@@ -11,7 +11,8 @@
     "https://ideas07576.tistory.com/326",
     "https://ideas07576.tistory.com/325",
     "https://ideas07576.tistory.com/282",
-    "https://ideas07576.tistory.com/333"
+    "https://ideas07576.tistory.com/333",
+    "https://ideas07576.tistory.com/332"
   ],
   "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
   "log": [
@@ -107,6 +108,14 @@
       "media_id": "18119840428978809",
       "images": "20261018_2047",
       "cover": "cream"
+    },
+    {
+      "at": "2026-10-19T20:47:21.658387+09:00",
+      "link": "https://ideas07576.tistory.com/332",
+      "title": "비트코인 월별 수익률 — 10월 평균 +16.6%로 1등, 10월에 산 1년은 꼴찌",
+      "images": "20261019_2046",
+      "cover": "navy",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -148,6 +157,15 @@
       "item": "20261019_qqqm-semi-weight",
       "title": "QQQM 반도체 비중, 반도체 ETF 0주인데 제 계좌엔 12%였습니다",
       "media_id": "17951034831325361"
+    },
+    {
+      "at": "2026-10-19T20:47:21.658369+09:00",
+      "item": "slides_20261019_2046",
+      "kind": "slides",
+      "hook": "number",
+      "slot": "evening",
+      "title": "비트코인 월별 수익률 — 10월 평균 +16.6%로 1등, 10월에 산 1년은 꼴찌",
+      "media_id": "18115741403018741"
     }
   ]
 }
