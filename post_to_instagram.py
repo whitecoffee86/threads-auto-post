@@ -49,6 +49,10 @@ REFRESH_EVERY_DAYS = 7
 # 피드 캐러셀 빈도. "daily" | "alternate"(격일: 피드 캐러셀은 이틀에 한 번, 그 사이 날은 같은 방식으로 만든 장표를
 # 슬라이드 릴스로만 올림). 10/19 주간 점검: 팔로워 0 계정에서 피드 캐러셀 3주·13개 도달 전부 0, 릴스는 개당 ~120
 FEED_MODE = _CFG.get("feed_mode", "daily")
+# 릴스 하루 최대 개수와 최소 간격. 10/19: 1 → 2 (점심 12시대 + 저녁 9시대). 릴스는 개당 도달이 일정(~120)해
+# 개수만큼 노출이 늘고, 첫 화면(질문형/숫자형) 비교 표본도 빨리 쌓인다.
+REELS_PER_DAY = int(_CFG.get("reels_per_day", 1))
+REEL_MIN_GAP_H = 6
 KST = timezone(timedelta(hours=9))
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
@@ -746,10 +750,34 @@ def publish_reel(video_url: str, caption: str, token: str, publish: bool = True)
     return ig("POST", f"{IG_USER_ID}/media_publish", token, creation_id=c["id"])["id"]
 
 
+def reel_slot_open(h: dict, label: str = "릴스") -> bool:
+    """오늘(KST) 릴스가 REELS_PER_DAY 개 미만이고 마지막 릴스가 REEL_MIN_GAP_H 시간 넘게 지났을 때만 True."""
+    if DRY_RUN:
+        return True
+    now = datetime.now(KST)
+    times = [datetime.fromisoformat(x["at"]) for x in h.get("reels", []) if x.get("media_id")]
+    today = sum(1 for t in times if t.astimezone(KST).date() == now.date())
+    if today >= REELS_PER_DAY:
+        print(f"{label}: 오늘 릴스 {today}개 — 하루 최대 {REELS_PER_DAY}개라 건너뜀")
+        return False
+    if times and max(times) > now - timedelta(hours=REEL_MIN_GAP_H):
+        print(f"{label}: 최근 {REEL_MIN_GAP_H}시간 안에 릴스가 올라감 — 건너뜀")
+        return False
+    return True
+
+
+def reel_hook(h: dict) -> str:
+    """슬라이드 릴스 첫 화면 A/B: 직전 슬라이드 릴스와 반대로 번갈아. question=표지(질문+힌트) 먼저, number=2장(결론 숫자) 먼저."""
+    last = next((x for x in reversed(h.get("reels", [])) if x.get("kind") == "slides" and x.get("media_id")), None)
+    return "number" if (last and last.get("hook", "question") == "question") else "question"
+
+
+def hook_order(paths: list[Path], hook: str) -> list[Path]:
+    return [paths[1], paths[0], *paths[2:]] if hook == "number" and len(paths) > 2 else list(paths)
+
+
 def run_reel(h: dict):
-    last = next((x for x in reversed(h.get("reels", [])) if x.get("media_id")), None)
-    if last and not DRY_RUN and datetime.fromisoformat(last["at"]) > datetime.now(KST) - timedelta(hours=12):
-        print("릴스: 최근 12시간 안에 이미 발행 — 건너뜀")
+    if not reel_slot_open(h, "영상 쇼츠 릴스"):
         return
     items = fetch_reels_queue()
     if not items:
@@ -827,14 +855,14 @@ def host_temp_video(video: Path) -> str:
 def run_slide_reel(h: dict, carousel: dict | None):
     if not carousel:
         return
-    last = next((x for x in reversed(h.get("reels", [])) if x.get("media_id")), None)
-    if last and not DRY_RUN and datetime.fromisoformat(last["at"]) > datetime.now(KST) - timedelta(hours=12):
-        print("슬라이드 릴스: 오늘 이미 릴스가 올라감 — 건너뜀")
+    if not reel_slot_open(h, "슬라이드 릴스"):
         return
-    video = make_slideshow(carousel["paths"], carousel["out_dir"] / "reel.mp4")
+    hook = reel_hook(h)
+    print(f"슬라이드 릴스 첫 화면: {hook}")
+    video = make_slideshow(hook_order(carousel["paths"], hook), carousel["out_dir"] / "reel.mp4")
     print(f"슬라이드 릴스 영상: {video} ({video.stat().st_size // 1024}KB)")
     lines = carousel["caption"].split("\n\n")
-    caption = carousel["caption"] if (len(lines) < 2 or carousel.get("feed") is False) else \
+    caption = carousel["caption"] if (len(lines) < 2 or carousel.get("feed") in (False, "backlog")) else \
         "\n\n".join(lines[:-1]) + "\n\n👉 장표로 천천히 보려면 프로필에서 같은 제목 게시물을 넘겨 보세요\n\n" + lines[-1]
     if DRY_RUN:
         print("DRY RUN — 슬라이드 릴스 업로드 안 함")
@@ -842,7 +870,8 @@ def run_slide_reel(h: dict, carousel: dict | None):
     media_id = publish_reel(host_temp_video(video), caption, load_token())
     print(f"슬라이드 릴스 발행 완료! media_id={media_id}")
     h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": f"slides_{carousel['stamp']}",
-                                     "kind": "slides", "title": carousel["title"], "media_id": media_id})
+                                     "kind": "slides", "hook": hook, "slot": "noon" if datetime.now(KST).hour < 17 else "evening",
+                                     "title": carousel["title"], "media_id": media_id})
     if carousel.get("feed") is False:  # 피드 쉬는 날 쓴 글도 다시 고르지 않게 기록
         h.setdefault("posted", []).append(carousel["link"])
         h.setdefault("log", []).append({"at": datetime.now(KST).isoformat(), "link": carousel["link"],
@@ -884,14 +913,60 @@ def is_feed_day(h: dict) -> bool:
     return gap >= 2
 
 
+def backlog_carousel(h: dict) -> dict | None:
+    """슬라이드 릴스로 만든 적 없는 지난 캐러셀(이미 렌더링된 장표가 ig_images 에 있음)을 오래된 것부터 하나."""
+    used = {x.get("item", "")[len("slides_"):] for x in h.get("reels", []) if x.get("kind") == "slides"}
+    used_titles = {x.get("title") for x in h.get("reels", [])}
+    for x in h.get("log", []):
+        stamp, title = x.get("images"), x.get("title")
+        d = IMAGES_ROOT / str(stamp)
+        if not x.get("media_id") or stamp in used or title in used_titles or not d.is_dir():
+            continue
+        paths = sorted(d.glob("*.jpg"), key=lambda q: int(q.stem) if q.stem.isdigit() else 99)
+        if len(paths) < 3:
+            continue
+        cap = reel_caption({"title": title}) if not DRY_RUN else title
+        return {"paths": paths, "out_dir": Path("/tmp") / f"backlog_{stamp}", "caption": cap,
+                "title": title, "stamp": stamp, "feed": "backlog", "link": x.get("link"), "cover": x.get("cover")}
+    return None
+
+
+def run_noon(h: dict):
+    """점심 슬롯: 피드 캐러셀 없이 릴스 1개만. 영상 쇼츠 대기열 → 지난 캐러셀 장표 → (새 글이 2개 이상 남았을 때만) 새 장표."""
+    if not reel_slot_open(h, "점심 릴스"):
+        return
+    run_reel(h)
+    h = load_history()
+    if not reel_slot_open(h, "점심 슬라이드 릴스"):
+        return
+    carousel = backlog_carousel(h)
+    if carousel:
+        carousel["out_dir"].mkdir(parents=True, exist_ok=True)
+        print(f"점심 슬라이드 릴스: 지난 캐러셀 장표 재사용 — {carousel['title']}")
+    else:
+        feed = feedparser.parse(TISTORY_RSS)
+        done = set(h.get("posted", []))
+        left = [e for e in feed.entries if e.link not in done and
+                not ({t.term for t in getattr(e, "tags", [])} & SKIP_CATEGORIES)]
+        if len(left) < 2:
+            print("점심 슬라이드 릴스: 재사용할 장표도, 여유 있는 새 글도 없음 — 건너뜀(저녁 몫 남김)")
+            return
+        carousel = run_carousel(h, feed=False)
+    run_slide_reel(load_history(), carousel)
+
+
 def main():
     if os.environ.get("IG_REEL_TEST") == "1":
         return reel_selftest()
     h = load_history()
     now = datetime.now(KST)
-    if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not (19 <= now.hour <= 23):
-        print(f"예약 실행이 너무 늦게 도착함({now:%H:%M}) — 저녁 시간대가 아니라 건너뜀")
+    noon = now.hour < 17 and os.environ.get("IG_SKIP_REELS") != "1"
+    if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not (11 <= now.hour <= 14 or 19 <= now.hour <= 23):
+        print(f"예약 실행이 너무 늦게 도착함({now:%H:%M}) — 발행 시간대가 아니라 건너뜀")
         return
+    if noon and REELS_PER_DAY >= 2:
+        print("점심 슬롯: 릴스만")
+        return run_noon(h)
     errors = []
     carousel = None
     feed = is_feed_day(h)
@@ -925,10 +1000,7 @@ def main():
 
 def run_carousel(h: dict, feed: bool = True):
     if not feed:
-        last_reel = next((x for x in reversed(h.get("reels", [])) if x.get("media_id")), None)
-        if last_reel and not DRY_RUN and \
-                datetime.fromisoformat(last_reel["at"]) > datetime.now(KST) - timedelta(hours=12):
-            print("릴스만 올리는 날인데 최근 12시간 안에 릴스가 이미 올라감 — 장표 생성 건너뜀")
+        if not reel_slot_open(h, "릴스용 장표"):
             return
     last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
     if last and not FORCE_URL and not DRY_RUN and \

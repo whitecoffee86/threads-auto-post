@@ -17,6 +17,7 @@
   "instagram": {
     "cover_mode": "alternate",
     "reader": "투자를 막 시작한 2030 직장인(성별 무관). 주식 앱을 깔고 ETF를 몇 개 사봤거나, 적금만 하다 이제 투자를 해보려는 사람. 월급·적금·카드값은 익숙하지만 세금·금리·ETF 구조 같은 용어는 아직 낯설다.",
-    "feed_mode": "alternate"
+    "feed_mode": "alternate",
+    "reels_per_day": 2
   }
 }

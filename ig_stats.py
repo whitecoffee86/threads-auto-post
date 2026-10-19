@@ -74,6 +74,7 @@ def main():
     log = hist.get("log", [])
     by_id = {x.get("media_id"): x for x in log if x.get("media_id")}
     reel_kind = {x.get("media_id"): x.get("kind", "video") for x in hist.get("reels", []) if x.get("media_id")}
+    reel_hook = {x.get("media_id"): x.get("hook") for x in hist.get("reels", []) if x.get("hook")}
 
     posts = []
     for m in media:
@@ -87,6 +88,7 @@ def main():
             "type": m.get("media_product_type"),
             "cover": meta.get("cover"),
             "reel_kind": reel_kind.get(m["id"]),
+            "hook": reel_hook.get(m["id"]),
             "title": meta.get("title") or (m.get("caption") or "").split("\n")[0][:50],
             "likes": m.get("like_count", 0),
             "comments": m.get("comments_count", 0),
@@ -120,6 +122,12 @@ def main():
             w = [p["avg_watch_ms"] for p in rows if p.get("avg_watch_ms")]
             wt = f", 평균 시청 {sum(w) / len(w) / 1000:.1f}초" if w else ""
             lines.append(f"  - 릴스({label}) {len(rows)}개: 도달 {avg(rows, 'reach'):.0f}{wt}")
+    for hk, label in (("question", "질문형"), ("number", "숫자형")):
+        rows = [p for p in posts if p.get("hook") == hk]
+        if rows:
+            w = [p["avg_watch_ms"] for p in rows if p.get("avg_watch_ms")]
+            wt = f", 평균 시청 {sum(w) / len(w) / 1000:.1f}초" if w else ""
+            lines.append(f"  - 슬라이드 첫 화면 {label} {len(rows)}개: 도달 {avg(rows, 'reach'):.0f}{wt}")
     for cv in ("navy", "cream"):
         rows = [p for p in posts if p.get("cover") == cv]
         if rows:
