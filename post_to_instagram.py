@@ -807,6 +807,7 @@ SLIDE_BRANCH = "reel-slides"
 SLIDE_SEC = 2.6      # 장표 1장 노출 시간
 COVER_SEC = 3.2      # 표지는 조금 더 길게
 FADE = 0.35
+BGM_DIR = Path(__file__).resolve().parent / "assets" / "bgm"
 
 
 def make_slideshow(paths: list[Path], out: Path) -> Path:
@@ -816,10 +817,15 @@ def make_slideshow(paths: list[Path], out: Path) -> Path:
     args = ["ffmpeg", "-y", "-loglevel", "error"]
     for p, d in zip(paths, durs):
         args += ["-loop", "1", "-t", f"{d + FADE:.2f}", "-i", str(p)]
-    # 잔잔한 패드 음악(직접 합성, 저작권 없음): C-E-G-B 화음 + 은은한 떨림, 앞뒤 페이드
-    tones = [130.81, 261.63, 329.63, 392.00, 493.88]
-    for f in tones:
-        args += ["-f", "lavfi", "-t", f"{total:.2f}", "-i", f"sine=frequency={f}:sample_rate=44100"]
+    # 배경음악: tools/make_bgm.py 로 직접 합성한 곡(코드 진행·드럼·멜로디, 저작권 없음)을 날짜별로 돌려 씀.
+    # (10/19 이전엔 사인파 화음 하나를 계속 깔아 '뚜~~' 지속음만 났음)
+    tracks = sorted(BGM_DIR.glob("*.m4a"))
+    if tracks:
+        bgm = tracks[datetime.now(KST).toordinal() % len(tracks)]
+        print(f"배경음악: {bgm.name}")
+        args += ["-stream_loop", "-1", "-i", str(bgm)]
+    else:
+        args += ["-f", "lavfi", "-t", f"{total:.2f}", "-i", "anullsrc=r=44100:cl=stereo"]
     fc = []
     for i in range(n):  # 1080x1350 장표를 1080x1920 남색 바탕 가운데에
         fc.append(f"[{i}:v]scale=1080:1350,pad=1080:1920:0:285:color=0x1E2D4F,setsar=1,fps=30,format=yuv420p[v{i}]")
@@ -828,9 +834,8 @@ def make_slideshow(paths: list[Path], out: Path) -> Path:
         off += durs[i - 1] - FADE
         fc.append(f"[{last}][v{i}]xfade=transition=slideleft:duration={FADE}:offset={off:.2f}[x{i}]")
         last = f"x{i}"
-    a_in = "".join(f"[{n + k}:a]" for k in range(len(tones)))
-    fc.append(f"{a_in}amix=inputs={len(tones)}:normalize=1,tremolo=f=0.25:d=0.35,volume=0.5,"
-              f"afade=t=in:d=1.5,afade=t=out:st={max(total - 2, 0):.2f}:d=2,aformat=channel_layouts=stereo[a]")
+    fc.append(f"[{n}:a]atrim=0:{total:.2f},asetpts=PTS-STARTPTS,volume=0.85,afade=t=in:d=0.15,"
+              f"afade=t=out:st={max(total - 1.5, 0):.2f}:d=1.5,aformat=channel_layouts=stereo[a]")
     args += ["-filter_complex", ";".join(fc), "-map", f"[{last}]", "-map", "[a]",
              "-t", f"{total:.2f}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
              "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(out)]
