@@ -164,15 +164,11 @@ def haas(x: np.ndarray, ms: float = 11) -> np.ndarray:
 # ─── 곡 정의 ──────────────────────────────────────────
 SONGS = [
     # 이름, bpm, 코드(마디당 1개), 스윙, 분위기, 저역통과(Hz)
-    # 10/19: 잔잔한 로파이 대신 신나는 곡으로만 돌리기로 함(사용자 요청). 로파이 스타일 코드는 남겨 둠.
-    dict(name="bgm_02_bright_groove", bpm=114, chords=["Cmaj7", "Am7", "Dm7", "G7"], swing=0.5,
-         style="pop", lp=15000, seed=23),
-    dict(name="bgm_04_fresh_start", bpm=118, chords=["Am7", "Fmaj7", "Cmaj7", "Gsus"], swing=0.5,
-         style="pop", lp=15000, seed=41),
-    dict(name="bgm_05_sunny_drive", bpm=122, chords=["Fmaj7", "G7", "Em7", "Am7"], swing=0.5,
+    # 10/19 결정: 그루브(로파이) 1곡 + 신나는 곡 1곡을 번갈아 씀. 곡별 도달 비교 후 정리 예정
+    dict(name="bgm_01_morning_groove", bpm=86, chords=["Fmaj7", "Em7", "Dm7", "Cmaj7"], swing=0.58,
+         style="lofi", lp=9000, seed=11),
+    dict(name="bgm_02_sunny_drive", bpm=122, chords=["Fmaj7", "G7", "Em7", "Am7"], swing=0.5,
          style="pop", lp=15000, seed=53),
-    dict(name="bgm_06_level_up", bpm=124, chords=["Dm7", "Bbmaj7", "Cmaj", "Am7"], swing=0.5,
-         style="pop", lp=15000, seed=67),
 ]
 
 

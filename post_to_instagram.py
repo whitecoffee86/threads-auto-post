@@ -810,18 +810,24 @@ FADE = 0.35
 BGM_DIR = Path(__file__).resolve().parent / "assets" / "bgm"
 
 
-def make_slideshow(paths: list[Path], out: Path) -> Path:
+LAST_BGM = ""
+
+
+def make_slideshow(paths: list[Path], out: Path, pick: int | None = None) -> Path:
+    global LAST_BGM
     n = len(paths)
     durs = [COVER_SEC] + [SLIDE_SEC] * (n - 1)
     total = sum(durs) - FADE * (n - 1)
     args = ["ffmpeg", "-y", "-loglevel", "error"]
     for p, d in zip(paths, durs):
         args += ["-loop", "1", "-t", f"{d + FADE:.2f}", "-i", str(p)]
-    # 배경음악: tools/make_bgm.py 로 직접 합성한 곡(코드 진행·드럼·멜로디, 저작권 없음)을 날짜별로 돌려 씀.
+    # 배경음악: tools/make_bgm.py 로 직접 합성한 곡(코드 진행·드럼·멜로디, 저작권 없음)을 번갈아 씀.
+    # 10/19 결정: 그루브(로파이) 기본 + 신나는 곡 1개를 번갈아 → 1~2주 뒤 곡별 도달 비교해 정리
     # (10/19 이전엔 사인파 화음 하나를 계속 깔아 '뚜~~' 지속음만 났음)
     tracks = sorted(BGM_DIR.glob("*.m4a"))
     if tracks:
-        bgm = tracks[datetime.now(KST).toordinal() % len(tracks)]
+        bgm = tracks[(datetime.now(KST).toordinal() if pick is None else pick) % len(tracks)]
+        LAST_BGM = bgm.stem
         print(f"배경음악: {bgm.name}")
         args += ["-stream_loop", "-1", "-i", str(bgm)]
     else:
@@ -864,7 +870,8 @@ def run_slide_reel(h: dict, carousel: dict | None):
         return
     hook = reel_hook(h)
     print(f"슬라이드 릴스 첫 화면: {hook}")
-    video = make_slideshow(hook_order(carousel["paths"], hook), carousel["out_dir"] / "reel.mp4")
+    n_prev = sum(1 for x in h.get("reels", []) if x.get("kind") == "slides")
+    video = make_slideshow(hook_order(carousel["paths"], hook), carousel["out_dir"] / "reel.mp4", pick=n_prev)
     print(f"슬라이드 릴스 영상: {video} ({video.stat().st_size // 1024}KB)")
     lines = carousel["caption"].split("\n\n")
     caption = carousel["caption"] if (len(lines) < 2 or carousel.get("feed") in (False, "backlog")) else \
@@ -876,7 +883,7 @@ def run_slide_reel(h: dict, carousel: dict | None):
     print(f"슬라이드 릴스 발행 완료! media_id={media_id}")
     h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": f"slides_{carousel['stamp']}",
                                      "kind": "slides", "hook": hook, "slot": "noon" if datetime.now(KST).hour < 17 else "evening",
-                                     "title": carousel["title"], "media_id": media_id})
+                                     "title": carousel["title"], "bgm": LAST_BGM, "media_id": media_id})
     if carousel.get("feed") is False:  # 피드 쉬는 날 쓴 글도 다시 고르지 않게 기록
         h.setdefault("posted", []).append(carousel["link"])
         h.setdefault("log", []).append({"at": datetime.now(KST).isoformat(), "link": carousel["link"],
