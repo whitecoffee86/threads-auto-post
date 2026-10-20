@@ -26,7 +26,7 @@
       "21": "video",
       "23": "standalone"
     },
-    "_slots_설명": "2026-10-20: 하루 4개 슬롯별 글 종류. 발행 시각은 Claude 예약 작업 '스레드 정시 발행'(각 슬롯 3분 전)과 맞출 것. standalone_every_n 은 슬롯 방식에선 안 씀"
+    "_slots_설명": "2026-10-20: 하루 4개 슬롯별 글 종류. 발행 시각은 Claude 예약 작업 '스레드 정시 발행'(각 슬롯 :12 — 21시는 인스타 저녁 릴스 뒤)과 맞출 것. standalone_every_n 은 슬롯 방식에선 안 씀"
   },
   "instagram": {
     "cover_mode": "alternate",
