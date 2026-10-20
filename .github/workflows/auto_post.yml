@@ -1,15 +1,28 @@
 name: 스레드 자동 발행 (링크 없는 스레드 전용 글)
 
 on:
-  schedule:
-    # 오전 8시 슬롯은 10/15 매일 점검에서 뺌 (하루 2개)
-    - cron: '0 3 * * *'    # 오후 12시 KST
-    - cron: '0 12 * * *'   # 오후 9시 KST
+  # 2026-10-20: GitHub 자체 예약(schedule)은 뺐음. 정각 예약이 4~5시간씩 늦게 도착해
+  # 오후 4~5시에 글이 나가고 21시 글이 막히는 일이 반복됐기 때문.
+  # 발행 시계는 Claude 예약 작업 '스레드 정시 발행'(11:57·17:57·20:57·22:57 KST) 하나만 씀.
+  # 슬롯별 글 종류: 12시 캐러셀 / 18시 블로그 카드 / 21시 영상 / 23시 스레드 전용 글
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '테스트 모드 (컨테이너 처리까지만, 게시·기록 안 함)'
+        type: boolean
+        default: false
+      force_kind:
+        description: '슬롯 종류 강제 (비우면 시각으로 결정): carousel / blog / video / standalone'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
 
 jobs:
   post:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: 코드 체크아웃
         uses: actions/checkout@v4
@@ -38,10 +51,13 @@ jobs:
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
           # 링크 정책 기본은 growth_config.json 의 threads.link_mode. 저장소 Variables에 값을 넣으면 그게 우선
           THREADS_LINK_MODE: ${{ vars.THREADS_LINK_MODE }}
+          THREADS_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          THREADS_FORCE_KIND: ${{ inputs.force_kind }}
         run: python post_to_threads.py
 
       - name: 발행 기록 저장
+        if: always() && !inputs.dry_run
         run: |
           git add published_history.json
           git diff --staged --quiet || git commit -m "발행 기록 업데이트"
-          git push
+          git pull --rebase --autostash origin main && git push

@@ -11,6 +11,8 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 
+import blog_source  # RSS 최신 글 + 사이트맵 전체 글 (2026-10-20)
+
 # ── 설정 ──────────────────────────────────────────
 TISTORY_RSS   = "https://ideas07576.tistory.com/rss"
 POSTS_PER_RUN = 1
@@ -53,6 +55,10 @@ CARD_IMAGE_MODE = _CFG.get("card_image", "alternate")
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
 THREADS_TOKEN     = os.environ["THREADS_ACCESS_TOKEN"]
+# 테스트: 컨테이너 생성·처리까지만 하고 게시·기록은 안 함 (auto_post.yml 수동 실행 dry_run)
+DRY_RUN           = os.environ.get("THREADS_DRY_RUN") == "1"
+# 테스트: 지금 시각과 무관하게 이 슬롯 종류로 실행 (carousel/blog/video/standalone)
+FORCE_KIND        = os.environ.get("THREADS_FORCE_KIND", "").strip()
 # ─────────────────────────────────────────────────
 
 KST = timezone(timedelta(hours=9))
@@ -69,8 +75,11 @@ def load_data() -> dict:
                 "cycle_published": set(data.get("cycle_published", [])),
                 "short_term_done": set(data.get("short_term_done", [])),
                 "recent_posts": data.get("recent_posts", []),
+                "threads_carousels": data.get("threads_carousels", []),  # 스레드에 올린 인스타 장표 묶음(stamp)
+                "threads_videos": data.get("threads_videos", []),        # 스레드에 올린 영상 id
             }
-    return {"cycle_published": set(), "short_term_done": set(), "recent_posts": []}
+    return {"cycle_published": set(), "short_term_done": set(), "recent_posts": [],
+            "threads_carousels": [], "threads_videos": []}
 
 
 def save_data(data: dict):
@@ -79,6 +88,8 @@ def save_data(data: dict):
             "cycle_published": list(data["cycle_published"]),
             "short_term_done": list(data["short_term_done"]),
             "recent_posts": data.get("recent_posts", [])[-RECENT_POSTS_KEEP:],
+            "threads_carousels": data.get("threads_carousels", [])[-60:],
+            "threads_videos": data.get("threads_videos", [])[-60:],
         }, f, ensure_ascii=False, indent=2)
 
 
@@ -1037,6 +1048,8 @@ def commit_and_push_image(path: Path) -> bool:
         if result.returncode != 0 and "nothing to commit" not in result.stdout:
             print(f"커밋 실패: {result.stdout}\n{result.stderr}")
             return False
+        # 인스타 워크플로가 그사이 main 에 푸시했을 수 있어 먼저 받아서 올림
+        subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", REPO_BRANCH], check=True)
         subprocess.run(["git", "push"], check=True)
         return True
     except subprocess.CalledProcessError as e:
@@ -1131,8 +1144,23 @@ def split_topic_tag(text: str) -> tuple:
     return body, tag
 
 
-def create_and_publish(text: str, reply_to_id: str = None, image_url: str = None) -> str | None:
-    """미디어 컨테이너 생성 → 상태 대기 → 발행. 성공 시 발행된 게시물 id 반환, 실패 시 None."""
+def _wait_url(url: str, tries: int = 12):
+    """raw.githubusercontent 반영 대기 (푸시 직후엔 잠깐 404)."""
+    for _ in range(tries):
+        try:
+            if requests.head(url, timeout=15).status_code == 200:
+                return True
+        except Exception:
+            pass
+        time.sleep(5)
+    print(f"주소 확인 실패(그대로 시도): {url}")
+    return False
+
+
+def create_and_publish(text: str, reply_to_id: str = None, image_url: str = None,
+                       video_url: str = None, carousel_urls: list = None) -> str | None:
+    """미디어 컨테이너 생성 → 상태 대기 → 발행. 성공 시 발행된 게시물 id 반환, 실패 시 None.
+    carousel_urls: 이미지 2~20장 캐러셀 / video_url: MP4 영상 (2026-10-20 추가)."""
     create_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}/threads"
     payload = {
         "access_token": THREADS_TOKEN,
@@ -1141,7 +1169,26 @@ def create_and_publish(text: str, reply_to_id: str = None, image_url: str = None
         text, topic = split_topic_tag(text)
         if topic:
             payload["topic_tag"] = topic
-    if image_url:
+    max_wait = 60
+    if carousel_urls:
+        children = []
+        for u in carousel_urls[:20]:
+            _wait_url(u)
+            r = requests.post(create_url, data={"access_token": THREADS_TOKEN, "media_type": "IMAGE",
+                                                "image_url": u, "is_carousel_item": "true"})
+            if r.status_code != 200:
+                print(f"캐러셀 장표 컨테이너 실패: {r.text}")
+                return None
+            children.append(r.json()["id"])
+        for cid in children:
+            if not wait_until_ready(cid):
+                return None
+        payload.update(media_type="CAROUSEL", children=",".join(children), text=text)
+    elif video_url:
+        _wait_url(video_url)
+        payload.update(media_type="VIDEO", video_url=video_url, text=text)
+        max_wait = 300  # 영상 인코딩 대기
+    elif image_url:
         payload["media_type"] = "IMAGE"
         payload["image_url"] = image_url
         payload["text"] = text
@@ -1158,8 +1205,12 @@ def create_and_publish(text: str, reply_to_id: str = None, image_url: str = None
 
     container_id = res.json().get("id")
 
-    if not wait_until_ready(container_id):
+    if not wait_until_ready(container_id, max_wait_sec=max_wait):
         return None
+
+    if DRY_RUN:
+        print(f"DRY RUN — 컨테이너 처리까지 성공({payload['media_type']}), 게시 안 함")
+        return "dry-run"
 
     publish_url = f"https://graph.threads.net/v1.0/{THREADS_USER_ID}/threads_publish"
     res2 = requests.post(publish_url, data={
@@ -1173,13 +1224,14 @@ def create_and_publish(text: str, reply_to_id: str = None, image_url: str = None
     return res2.json().get("id")
 
 
-def post_to_threads(text: str, link: str | None = None, image_url: str = None) -> bool:
+def post_to_threads(text: str, link: str | None = None, image_url: str = None,
+                    video_url: str = None, carousel_urls: list = None) -> bool:
     """본문 발행. link가 있을 때만 내 글의 첫 답글로 링크를 붙임 (LINK_MODE=on일 때만 전달됨)."""
-    post_id = create_and_publish(text, image_url=image_url)
+    post_id = create_and_publish(text, image_url=image_url, video_url=video_url, carousel_urls=carousel_urls)
     if not post_id:
         return False
 
-    if link:
+    if link and not DRY_RUN:
         reply_id = create_and_publish(link, reply_to_id=post_id)
         if not reply_id:
             print("본문은 발행됐지만 링크 답글 발행에 실패했습니다.")
@@ -1296,22 +1348,36 @@ def publish_standalone(data: dict) -> bool:
         return False
 
 
-DAILY_MAX_POSTS = int(_CFG.get("daily_max_posts", 2))  # 하루 최대 발행 수 (예약+수동 실행 합산). 10/15 매일 점검: 3 → 2
-MIN_GAP_HOURS = 3.5          # 글 사이 최소 간격
-SLOT_HOURS = (12, 21)        # 발행 슬롯(KST). auto_post.yml cron·'스레드 정시 발행' 예약과 맞춤
-SCHEDULE_LATE_HOURS = 2      # GitHub 예약 실행은 슬롯 뒤 이 시간 안에 도착했을 때만 발행
+# ── 슬롯별 발행 (2026-10-20) ─────────────────────────
+# 발행 시계는 Claude 예약 작업 '스레드 정시 발행' 하나(11:57·17:57·20:57·22:57 KST).
+# GitHub 자체 예약은 몇 시간씩 늦게 도착해 엉뚱한 시각에 글을 내보내서 auto_post.yml 에서 뺐다.
+# 슬롯마다 글 종류를 정해 하루 4개가 서로 다른 모양으로 나가게 한다.
+SLOT_HOURS = tuple(int(h) for h in _CFG.get("slots", [12, 18, 21, 23]))
+SLOT_KIND = {int(k): v for k, v in (_CFG.get("slot_kinds") or
+             {"12": "carousel", "18": "blog", "21": "video", "23": "standalone"}).items()}
+DAILY_MAX_POSTS = int(_CFG.get("daily_max_posts", 4))   # 하루 최대 발행 수 (모든 실행 합산)
+MIN_GAP_HOURS = float(_CFG.get("min_gap_hours", 1.5))   # 글 사이 최소 간격
+SCHEDULE_LATE_HOURS = 2      # (GitHub 예약을 다시 켤 경우) 슬롯 뒤 이 시간 안에 도착했을 때만 발행
+IG_HISTORY = Path("instagram_history.json")
+IG_IMAGES = Path("ig_images")
+VIDEO_BRANCH = "threads-video"  # 인스타 릴스 발행 후 같은 영상을 여기에 남김(post_to_instagram.py)
+
+
+def current_slot(now: datetime) -> int | None:
+    """지금 시각에 가장 가까운 슬롯(슬롯 30분 전 ~ 2시간 뒤). 범위 밖(수동 실행 등)이면 None."""
+    t = now.hour + now.minute / 60
+    near = [h for h in SLOT_HOURS if h - 0.5 <= t < h + 2]
+    return min(near, key=lambda h: abs(t - h)) if near else None
 
 
 def late_schedule_guard(data):
-    """발행량 가드. GitHub 예약 실행(schedule)과 외부 예약 작업(workflow_dispatch)이
-    둘 다 돌면서 하루 4~5개, 1~2시간 간격으로 몰려 나가던 문제 방지.
-    - 예약 실행이 새벽(0~6시)에 늦게 도착하면 건너뜀
-    - 실행 종류와 관계없이: 오늘(KST) 이미 DAILY_MAX_POSTS개 올렸거나,
-      마지막 글이 MIN_GAP_HOURS 안이면 건너뜀"""
+    """발행량 가드. 실행 종류와 관계없이: 오늘(KST) 이미 DAILY_MAX_POSTS개 올렸거나,
+    마지막 글이 MIN_GAP_HOURS 안이면 건너뜀. GitHub 예약 실행이 슬롯 밖에 늦게 오면 건너뜀."""
+    if DRY_RUN:
+        return False
     now = datetime.now(KST)
     if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not any(
             h <= now.hour < h + SCHEDULE_LATE_HOURS for h in SLOT_HOURS):
-        # 10/19 주간 점검: 12시 예약이 16~17시에 도착해 21시 슬롯을 먹고 있었음 → 슬롯+2시간 밖이면 건너뜀
         print(f"⏭️ 예약 실행이 {now:%H:%M}에 늦게 도착 — 발행 슬롯({SLOT_HOURS}시 +{SCHEDULE_LATE_HOURS}h) 밖이라 건너뜀")
         return True
     times = []
@@ -1333,60 +1399,142 @@ def late_schedule_guard(data):
     return False
 
 
+def _source_post(link: str, title: str, summary: str = "") -> dict:
+    """캐러셀·영상 글의 재료: 블로그 글 본문(있으면) → 없으면 제목·요약만."""
+    d = blog_source.fetch_detail(link) if link else None
+    if d:
+        return d
+    return {"title": title, "link": link or "", "summary": summary or title, "category": ""}
+
+
+def publish_carousel_slot(data: dict) -> bool:
+    """인스타에 올린 캐러셀 장표(ig_images/<stamp>/1.jpg…)를 스레드 캐러셀로. 최근 것부터, 한 번씩만."""
+    try:
+        h = json.loads(IG_HISTORY.read_text(encoding="utf-8")) if IG_HISTORY.exists() else {}
+    except Exception:
+        h = {}
+    used = set(data.get("threads_carousels", []))
+    cutoff = datetime.now(KST) - timedelta(days=5)
+    for x in reversed(h.get("log", [])):
+        stamp = str(x.get("images") or "")
+        d = IG_IMAGES / stamp
+        try:
+            at = datetime.fromisoformat(x["at"])
+        except Exception:
+            continue
+        if not stamp or stamp in used or at < cutoff or not d.is_dir():
+            continue
+        paths = sorted(d.glob("*.jpg"), key=lambda q: int(q.stem) if q.stem.isdigit() else 99)
+        if len(paths) < 2:
+            continue
+        post = _source_post(x.get("link", ""), x.get("title", ""))
+        recent = data.get("recent_posts", [])
+        fmt = pick_format(recent)
+        text = generate_threads_post(post, recent, fmt)
+        print(f"\n캐러셀 글: {x.get('title')} ({stamp}, {len(paths)}장)\n포맷: {POST_FORMATS[fmt][0]}\n{text}\n")
+        urls = [build_raw_url(p) for p in paths]
+        if not post_to_threads(text, carousel_urls=urls):
+            print("캐러셀 발행 실패")
+            return False
+        print("발행 완료: 캐러셀")
+        data.setdefault("threads_carousels", []).append(stamp)
+        if post.get("link"):
+            data["cycle_published"].add(post["link"])
+        _record(data, {"kind": "carousel", "link": post.get("link", ""), "format": fmt, "text": text,
+                       "linked": False, "image": True, "stamp": stamp})
+        return True
+    print("스레드에 안 올린 최근 캐러셀 장표 없음")
+    return False
+
+
+def publish_video_slot(data: dict) -> bool:
+    """인스타에 올린 최신 릴스 영상(threads-video 브랜치)을 스레드 영상으로. 16시간 안의 새 영상만."""
+    base = f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}/{VIDEO_BRANCH}"
+    try:
+        r = requests.get(f"{base}/meta.json", timeout=20, params={"t": int(time.time())})
+        if r.status_code != 200:
+            print("스레드용 영상 없음(threads-video 브랜치 비어 있음)")
+            return False
+        meta = r.json()
+    except Exception as e:
+        print(f"영상 정보 읽기 실패: {e}")
+        return False
+    vid = str(meta.get("id") or "")
+    try:
+        fresh = datetime.now(KST) - datetime.fromisoformat(meta["at"]) < timedelta(hours=16)
+    except Exception:
+        fresh = False
+    if not vid or vid in data.get("threads_videos", []) or not fresh:
+        print(f"새 영상 없음(id={vid or '-'}, 16시간 안: {fresh})")
+        return False
+    post = _source_post(meta.get("link", ""), meta.get("title", ""), meta.get("summary", ""))
+    recent = data.get("recent_posts", [])
+    fmt = pick_format(recent)
+    text = generate_threads_post(post, recent, fmt)
+    print(f"\n영상 글: {meta.get('title')} ({vid})\n포맷: {POST_FORMATS[fmt][0]}\n{text}\n")
+    if not post_to_threads(text, video_url=f"{base}/{meta.get('file', 'video.mp4')}"):
+        print("영상 발행 실패")
+        return False
+    print("발행 완료: 영상")
+    data.setdefault("threads_videos", []).append(vid)
+    if post.get("link"):
+        data["cycle_published"].add(post["link"])
+    _record(data, {"kind": "video", "link": post.get("link", ""), "format": fmt, "text": text,
+                   "linked": False, "image": True, "video": vid})
+    return True
+
+
+def publish_blog_slot(data: dict, today) -> bool:
+    """블로그 기반 카드 글. 오늘 올라온 매매 일지 → 새 글(RSS) → 과거 글(사이트맵, 무작위)."""
+    rss = blog_source.rss_posts()
+    for p in rss:  # 1) 오늘 올라온 단기투자(매매 일지) 글이 있으면 최우선
+        if p["category"] == SHORT_TERM_CATEGORY and p["link"] not in data["short_term_done"] \
+                and p["pub_date"] == today:
+            if publish_one(p, data):
+                data["short_term_done"].add(p["link"])
+                return True
+    done = data["cycle_published"]
+    cands = blog_source.candidates(done, {SHORT_TERM_CATEGORY}, k=2, rss=rss)
+    if not cands:
+        print(f"블로그 글 {blog_source.total_posts()}개를 한 바퀴 다 씀 — 기록 초기화 후 다시 시작")
+        data["cycle_published"] = set()
+        cands = blog_source.candidates(set(), {SHORT_TERM_CATEGORY}, k=2, rss=rss)
+    for post in cands:
+        print(f"재료: {'과거 글' if post.get('past') else '새 글'} {post['link']}")
+        if publish_one(post, data):
+            data["cycle_published"].add(post["link"])
+            return True
+    return False
+
+
 def main():
     data = load_data()
     if late_schedule_guard(data):
         return
-    published_count = 0
-    today = datetime.now(KST).date()
-    all_posts = fetch_rss()
+    now = datetime.now(KST)
+    slot = current_slot(now)
+    kind = FORCE_KIND or SLOT_KIND.get(slot, "blog")
+    print(f"슬롯: {slot or '-'}시 → {kind}{' (DRY RUN)' if DRY_RUN else ''}")
 
-    # 1) 오늘 올라온 단기투자(매매 일지) 글이 있으면 최우선
-    short_term_new = [
-        p for p in all_posts
-        if p["category"] == SHORT_TERM_CATEGORY
-        and p["link"] not in data["short_term_done"]
-        and p["pub_date"] == today
-    ]
+    ok = False
+    if kind == "carousel":
+        ok = publish_carousel_slot(data)
+    elif kind == "video":
+        ok = publish_video_slot(data)
+    elif kind == "standalone":
+        ok = publish_standalone(data)
+    if not ok:  # 재료가 없거나 실패하면 블로그 카드 글로 대신
+        if kind != "blog":
+            print(f"{kind} 대신 블로그 카드 글로 발행")
+        ok = publish_blog_slot(data, now.date())
 
-    if short_term_new and published_count < POSTS_PER_RUN:
-        post = short_term_new[0]
-        if publish_one(post, data):
-            data["short_term_done"].add(post["link"])
-            published_count += 1
-
-    # 2) 블로그 기반 글이 연달아 나갔으면 이번엔 스레드 전용 글
-    if published_count < POSTS_PER_RUN and should_post_standalone(data.get("recent_posts", [])):
-        if publish_standalone(data):
-            published_count += 1
-
-    # 3) 나머지는 블로그 글을 재료로 순환
-    remaining = POSTS_PER_RUN - published_count
-    if remaining > 0:
-        cycle_candidates = [
-            p for p in reversed(all_posts)
-            if p["category"] != SHORT_TERM_CATEGORY
-            and p["link"] not in data["cycle_published"]
-        ]
-
-        if not cycle_candidates:
-            print("순환 대상 글을 모두 발행함. 기록 초기화 후 다시 시작합니다.")
-            data["cycle_published"] = set()
-            cycle_candidates = [
-                p for p in reversed(all_posts)
-                if p["category"] != SHORT_TERM_CATEGORY
-            ]
-
-        for post in cycle_candidates[:remaining]:
-            if publish_one(post, data):
-                data["cycle_published"].add(post["link"])
-                published_count += 1
-
-    if published_count == 0:
-        print("오늘 발행할 글이 없습니다.")
-
+    if DRY_RUN:
+        print(f"\nDRY RUN 끝 — 기록 저장 안 함 (성공: {ok})")
+        return
     save_data(data)
-    print(f"\n완료! 총 {published_count}개 발행")
+    print(f"\n완료! {'1개 발행' if ok else '발행 못 함'}")
+    if not ok:
+        raise SystemExit(1)  # 매일 점검이 실패로 잡을 수 있게
 
 
 if __name__ == "__main__":

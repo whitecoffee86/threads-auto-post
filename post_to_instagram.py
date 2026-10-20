@@ -31,6 +31,11 @@ import requests
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from playwright.sync_api import sync_playwright
 
+import blog_source  # RSS 최신 글 + 사이트맵 전체 글 (2026-10-20)
+
+# 과거 글은 사이트맵 수정일이 이 일수 안인 것만 캐러셀로 (숫자가 많아 오래 방치된 글은 피함)
+PAST_FRESH_DAYS = 180
+
 # ─── 설정 ──────────────────────────────────────────
 TISTORY_RSS = "https://ideas07576.tistory.com/rss"
 SKIP_CATEGORIES = {"단기 투자"}           # 매매일지는 캐러셀에 안 맞아서 제외
@@ -146,7 +151,10 @@ def pick_post(h: dict) -> dict | None:
                 return p
         return {"title": "", "link": FORCE_URL, "category": ""}
     done = set(h.get("posted", []))
-    cands = [p for p in posts if p["category"] not in SKIP_CATEGORIES and p["link"] not in done][:8]
+    # 2026-10-20: RSS 최신 10개만 보던 것 → 새 글(일주일 안)이 있으면 그중에서, 없으면 사이트맵 과거 글 8개 중에서
+    found = blog_source.candidates(done, SKIP_CATEGORIES, k=8, fresh_days=PAST_FRESH_DAYS)
+    new = [p for p in found if not p.get("past")]
+    cands = new or found
     if len(cands) <= 1:
         return cands[0] if cands else None
     try:  # 초보 독자에게 가장 가까운 글을 고른다
@@ -796,7 +804,33 @@ def run_reel(h: dict):
     h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": item.name,
                                      "title": meta.get("title", ""), "media_id": media_id})
     save_history(h)
+    share_for_threads(item / "video.mp4", {"id": item.name, "kind": "short", "title": meta.get("title", ""),
+                                           "summary": meta.get("summary", ""), "link": meta.get("blog_url", "")})
     remove_from_queue(item)
+
+
+THREADS_VIDEO_BRANCH = "threads-video"
+
+
+def share_for_threads(video: Path, meta: dict):
+    """방금 릴스로 올린 영상을 스레드 21시 영상 슬롯이 쓰도록 threads-video 브랜치에 남긴다(2026-10-20).
+    히스토리 없는 브랜치에 최신 1개만 덮어씀. 실패해도 인스타 발행에는 영향 없음."""
+    try:
+        d = Path("/tmp/threads_video_repo")
+        subprocess.run(["rm", "-rf", str(d)])
+        d.mkdir()
+        subprocess.run(["cp", str(video), str(d / "video.mp4")], check=True)
+        meta = dict(meta, at=datetime.now(KST).isoformat(), file="video.mp4")
+        (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+        url = f"https://x-access-token:{os.environ.get('GH_TOKEN', '')}@github.com/{REPO}.git"
+        for args in (["init", "-q"], ["checkout", "-q", "--orphan", THREADS_VIDEO_BRANCH], ["add", "-A"],
+                     ["-c", "user.name=github-actions", "-c", "user.email=actions@github.com", "commit", "-qm",
+                      f"스레드용 영상: {meta.get('id')}"],
+                     ["push", "-f", url, THREADS_VIDEO_BRANCH]):
+            _git(*args, cwd=d)
+        print(f"스레드용 영상 남김: {meta.get('id')}")
+    except Exception as e:
+        print(f"스레드용 영상 남기기 실패(인스타 발행은 정상): {e}")
 
 
 # ─── 슬라이드 릴스 (캐러셀 장표 → 세로 영상) ─────────────
@@ -889,7 +923,13 @@ def run_slide_reel(h: dict, carousel: dict | None):
         h.setdefault("log", []).append({"at": datetime.now(KST).isoformat(), "link": carousel["link"],
                                         "title": carousel["title"], "images": carousel["stamp"],
                                         "cover": carousel["cover"], "reel_only": True})
+        try:  # 스레드 12시 캐러셀 슬롯이 쓸 수 있게 장표도 main 에 올림 (2026-10-20)
+            push_images(carousel["paths"])
+        except Exception as e:
+            print(f"릴스 전용 장표 푸시 실패(스레드 캐러셀만 영향): {e}")
     save_history(h)
+    share_for_threads(video, {"id": f"slides_{carousel['stamp']}", "kind": "slides",
+                              "title": carousel["title"], "link": carousel.get("link", "")})
 
 
 # ─── 메인 ──────────────────────────────────────────
@@ -956,13 +996,7 @@ def run_noon(h: dict):
         carousel["out_dir"].mkdir(parents=True, exist_ok=True)
         print(f"점심 슬라이드 릴스: 지난 캐러셀 장표 재사용 — {carousel['title']}")
     else:
-        feed = feedparser.parse(TISTORY_RSS)
-        done = set(h.get("posted", []))
-        left = [e for e in feed.entries if e.link not in done and
-                not ({t.term for t in getattr(e, "tags", [])} & SKIP_CATEGORIES)]
-        if len(left) < 2:
-            print("점심 슬라이드 릴스: 재사용할 장표도, 여유 있는 새 글도 없음 — 건너뜀(저녁 몫 남김)")
-            return
+        # 2026-10-20: 사이트맵 과거 글까지 재료로 쓰므로 '새 글 2개 이상 남았을 때만' 제한을 없앰
         carousel = run_carousel(h, feed=False)
     run_slide_reel(load_history(), carousel)
 
@@ -1025,6 +1059,8 @@ def run_carousel(h: dict, feed: bool = True):
         return
     title, body = fetch_article_text(post["link"])
     title = post["title"] or title
+    if post.get("past"):  # 과거 글: 지금은 바뀌었을 수 있는 수치·규정을 피하게
+        body = blog_source.PAST_NOTE + body
     print(f"선택된 글: {title}\n{post['link']}")
 
     spec = enforce_structure(review_spec(enforce_structure(build_spec(title, post["category"], body)), body))

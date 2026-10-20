@@ -12,7 +12,21 @@
     ],
     "standalone_every_n": 6,
     "card_image": "always",
-    "daily_max_posts": 2
+    "daily_max_posts": 4,
+    "min_gap_hours": 1.5,
+    "slots": [
+      12,
+      18,
+      21,
+      23
+    ],
+    "slot_kinds": {
+      "12": "carousel",
+      "18": "blog",
+      "21": "video",
+      "23": "standalone"
+    },
+    "_slots_설명": "2026-10-20: 하루 4개 슬롯별 글 종류. 발행 시각은 Claude 예약 작업 '스레드 정시 발행'(각 슬롯 3분 전)과 맞출 것. standalone_every_n 은 슬롯 방식에선 안 씀"
   },
   "instagram": {
     "cover_mode": "alternate",
