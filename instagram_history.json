@@ -12,7 +12,8 @@
     "https://ideas07576.tistory.com/325",
     "https://ideas07576.tistory.com/282",
     "https://ideas07576.tistory.com/333",
-    "https://ideas07576.tistory.com/332"
+    "https://ideas07576.tistory.com/332",
+    "https://ideas07576.tistory.com/334"
   ],
   "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
   "log": [
@@ -116,6 +117,14 @@
       "images": "20261019_2046",
       "cover": "navy",
       "reel_only": true
+    },
+    {
+      "at": "2026-10-20T20:48:05.300092+09:00",
+      "link": "https://ideas07576.tistory.com/334",
+      "title": "KODEX 레버리지 손실 회복 기간 — 지수 −34%에 −66%, 원금까지 +195%",
+      "media_id": "17904933114597539",
+      "images": "20261020_2047",
+      "cover": "navy"
     }
   ],
   "reels": [
@@ -172,6 +181,16 @@
       "item": "20261020_schd-vs-jepq",
       "title": "SCHD vs JEPQ, 1억이면 월 배당 22만원 vs 82만원… 그런데 하락장에선?",
       "media_id": "18127237471875913"
+    },
+    {
+      "at": "2026-10-20T20:48:53.972284+09:00",
+      "item": "slides_20261020_2047",
+      "kind": "slides",
+      "hook": "question",
+      "slot": "evening",
+      "title": "KODEX 레버리지 손실 회복 기간 — 지수 −34%에 −66%, 원금까지 +195%",
+      "bgm": "bgm_01_morning_groove",
+      "media_id": "17899263723672283"
     }
   ]
 }
