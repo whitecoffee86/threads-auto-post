@@ -1,56 +1,56 @@
 {
   "cycle_published": [
-    "https://ideas07576.tistory.com/335",
-    "https://ideas07576.tistory.com/307",
-    "https://ideas07576.tistory.com/311",
-    "https://ideas07576.tistory.com/308",
-    "https://ideas07576.tistory.com/332",
     "https://ideas07576.tistory.com/279",
-    "https://ideas07576.tistory.com/314",
-    "https://ideas07576.tistory.com/322",
+    "https://ideas07576.tistory.com/311",
     "https://ideas07576.tistory.com/316",
+    "https://ideas07576.tistory.com/307",
+    "https://ideas07576.tistory.com/280",
+    "https://ideas07576.tistory.com/314",
+    "https://ideas07576.tistory.com/319",
     "https://ideas07576.tistory.com/313",
     "https://ideas07576.tistory.com/318",
-    "https://ideas07576.tistory.com/278",
-    "https://ideas07576.tistory.com/330",
-    "https://ideas07576.tistory.com/327",
     "https://ideas07576.tistory.com/281",
-    "https://ideas07576.tistory.com/334",
-    "https://ideas07576.tistory.com/319",
-    "https://ideas07576.tistory.com/325",
+    "https://ideas07576.tistory.com/335",
+    "https://ideas07576.tistory.com/322",
     "https://ideas07576.tistory.com/266",
-    "https://ideas07576.tistory.com/331",
+    "https://ideas07576.tistory.com/312",
+    "https://ideas07576.tistory.com/278",
+    "https://ideas07576.tistory.com/325",
     "https://ideas07576.tistory.com/333",
     "https://ideas07576.tistory.com/317",
-    "https://ideas07576.tistory.com/321",
+    "https://ideas07576.tistory.com/310",
+    "https://ideas07576.tistory.com/332",
+    "https://ideas07576.tistory.com/330",
+    "https://ideas07576.tistory.com/326",
+    "https://ideas07576.tistory.com/327",
+    "https://ideas07576.tistory.com/331",
     "https://ideas07576.tistory.com/324",
     "https://ideas07576.tistory.com/282",
-    "https://ideas07576.tistory.com/320",
     "https://ideas07576.tistory.com/309",
-    "https://ideas07576.tistory.com/280",
+    "https://ideas07576.tistory.com/308",
+    "https://ideas07576.tistory.com/320",
+    "https://ideas07576.tistory.com/321",
+    "https://ideas07576.tistory.com/329",
     "https://ideas07576.tistory.com/323",
-    "https://ideas07576.tistory.com/326",
-    "https://ideas07576.tistory.com/310",
-    "https://ideas07576.tistory.com/312",
-    "https://ideas07576.tistory.com/329"
+    "https://ideas07576.tistory.com/334"
   ],
   "short_term_done": [
-    "https://ideas07576.tistory.com/222",
-    "https://ideas07576.tistory.com/284",
     "https://ideas07576.tistory.com/297",
-    "https://ideas07576.tistory.com/315",
-    "https://ideas07576.tistory.com/293",
-    "https://ideas07576.tistory.com/226",
     "https://ideas07576.tistory.com/219",
     "https://ideas07576.tistory.com/328",
-    "https://ideas07576.tistory.com/231",
     "https://ideas07576.tistory.com/221",
-    "https://ideas07576.tistory.com/296",
     "https://ideas07576.tistory.com/224",
-    "https://ideas07576.tistory.com/305",
+    "https://ideas07576.tistory.com/226",
+    "https://ideas07576.tistory.com/231",
+    "https://ideas07576.tistory.com/293",
     "https://ideas07576.tistory.com/337",
     "https://ideas07576.tistory.com/277",
-    "https://ideas07576.tistory.com/251"
+    "https://ideas07576.tistory.com/305",
+    "https://ideas07576.tistory.com/296",
+    "https://ideas07576.tistory.com/222",
+    "https://ideas07576.tistory.com/315",
+    "https://ideas07576.tistory.com/251",
+    "https://ideas07576.tistory.com/284"
   ],
   "recent_posts": [
     {
@@ -276,10 +276,22 @@
       "linked": false,
       "image": true,
       "at": "2026-10-20T18:14+09:00"
+    },
+    {
+      "kind": "video",
+      "link": "",
+      "format": "question",
+      "text": "지수가 원래대로 돌아오면 내 계좌도 돌아올 줄 알았음\n\n근데 레버리지는 그게 아니더라. 지수 −34% 빠지는 동안 레버리지는 −66% 찍고, 원금 회복하려면 +195% 올라야 함. 지수 회복이랑 내 계좌 회복은 완전 다른 문제였음. 나는 그래서 레버리지는 무조건 분할로만 건드림.\n\n레버리지 물려 있으면 존버함? 손절함?\n\n#ETF",
+      "linked": false,
+      "image": true,
+      "video": "slides_20261020_2047",
+      "at": "2026-10-20T21:19+09:00"
     }
   ],
   "threads_carousels": [
     "20261018_2047"
   ],
-  "threads_videos": []
+  "threads_videos": [
+    "slides_20261020_2047"
+  ]
 }
