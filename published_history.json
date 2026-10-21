@@ -1,58 +1,58 @@
 {
   "cycle_published": [
-    "https://ideas07576.tistory.com/310",
-    "https://ideas07576.tistory.com/322",
-    "https://ideas07576.tistory.com/333",
-    "https://ideas07576.tistory.com/317",
-    "https://ideas07576.tistory.com/320",
-    "https://ideas07576.tistory.com/311",
+    "https://ideas07576.tistory.com/326",
     "https://ideas07576.tistory.com/266",
-    "https://ideas07576.tistory.com/109",
-    "https://ideas07576.tistory.com/314",
-    "https://ideas07576.tistory.com/325",
-    "https://ideas07576.tistory.com/282",
-    "https://ideas07576.tistory.com/281",
-    "https://ideas07576.tistory.com/336",
+    "https://ideas07576.tistory.com/317",
     "https://ideas07576.tistory.com/313",
-    "https://ideas07576.tistory.com/324",
-    "https://ideas07576.tistory.com/332",
+    "https://ideas07576.tistory.com/280",
+    "https://ideas07576.tistory.com/330",
+    "https://ideas07576.tistory.com/333",
     "https://ideas07576.tistory.com/327",
+    "https://ideas07576.tistory.com/318",
+    "https://ideas07576.tistory.com/278",
+    "https://ideas07576.tistory.com/332",
+    "https://ideas07576.tistory.com/322",
+    "https://ideas07576.tistory.com/334",
+    "https://ideas07576.tistory.com/109",
+    "https://ideas07576.tistory.com/323",
     "https://ideas07576.tistory.com/331",
+    "https://ideas07576.tistory.com/320",
     "https://ideas07576.tistory.com/321",
     "https://ideas07576.tistory.com/312",
-    "https://ideas07576.tistory.com/308",
-    "https://ideas07576.tistory.com/326",
     "https://ideas07576.tistory.com/335",
-    "https://ideas07576.tistory.com/278",
-    "https://ideas07576.tistory.com/319",
-    "https://ideas07576.tistory.com/334",
-    "https://ideas07576.tistory.com/318",
     "https://ideas07576.tistory.com/329",
+    "https://ideas07576.tistory.com/311",
     "https://ideas07576.tistory.com/309",
-    "https://ideas07576.tistory.com/280",
     "https://ideas07576.tistory.com/279",
-    "https://ideas07576.tistory.com/323",
-    "https://ideas07576.tistory.com/330",
+    "https://ideas07576.tistory.com/308",
+    "https://ideas07576.tistory.com/314",
+    "https://ideas07576.tistory.com/281",
+    "https://ideas07576.tistory.com/324",
     "https://ideas07576.tistory.com/307",
-    "https://ideas07576.tistory.com/316"
+    "https://ideas07576.tistory.com/325",
+    "https://ideas07576.tistory.com/310",
+    "https://ideas07576.tistory.com/336",
+    "https://ideas07576.tistory.com/316",
+    "https://ideas07576.tistory.com/319",
+    "https://ideas07576.tistory.com/282"
   ],
   "short_term_done": [
-    "https://ideas07576.tistory.com/284",
-    "https://ideas07576.tistory.com/297",
-    "https://ideas07576.tistory.com/221",
     "https://ideas07576.tistory.com/226",
     "https://ideas07576.tistory.com/293",
-    "https://ideas07576.tistory.com/251",
+    "https://ideas07576.tistory.com/221",
     "https://ideas07576.tistory.com/305",
     "https://ideas07576.tistory.com/315",
-    "https://ideas07576.tistory.com/222",
-    "https://ideas07576.tistory.com/224",
-    "https://ideas07576.tistory.com/219",
-    "https://ideas07576.tistory.com/337",
     "https://ideas07576.tistory.com/296",
+    "https://ideas07576.tistory.com/277",
     "https://ideas07576.tistory.com/328",
     "https://ideas07576.tistory.com/231",
-    "https://ideas07576.tistory.com/277"
+    "https://ideas07576.tistory.com/224",
+    "https://ideas07576.tistory.com/284",
+    "https://ideas07576.tistory.com/251",
+    "https://ideas07576.tistory.com/337",
+    "https://ideas07576.tistory.com/222",
+    "https://ideas07576.tistory.com/219",
+    "https://ideas07576.tistory.com/297"
   ],
   "recent_posts": [
     {
@@ -316,6 +316,16 @@
       "linked": false,
       "image": true,
       "at": "2026-10-21T18:14+09:00"
+    },
+    {
+      "kind": "video",
+      "link": "https://ideas07576.tistory.com/335",
+      "format": "opinion",
+      "text": "삼성전자가 같은 낙폭에서 더 빨리 회복하더라\n\nSK하이닉스랑 삼성전자 둘 다 반토막 구간 비교해봤는데, 삼전이 확실히 회복 빠름. 같은 반도체인데 종목마다 결과가 이렇게 갈림. 지수 사면 평균이라도 먹는데 개별 종목은 평균 위일 수도, 한참 아래일 수도 있는 거.\n\n개별 종목 들고 감? ETF로 분산함?\n\n#주식",
+      "linked": false,
+      "image": true,
+      "video": "slides_20261021_2047",
+      "at": "2026-10-21T21:23+09:00"
     }
   ],
   "threads_carousels": [
@@ -323,6 +333,7 @@
     "20261020_2047"
   ],
   "threads_videos": [
-    "slides_20261020_2047"
+    "slides_20261020_2047",
+    "slides_20261021_2047"
   ]
 }
