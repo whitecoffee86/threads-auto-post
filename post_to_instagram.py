@@ -229,6 +229,7 @@ PROMPT = """너는 'WhiteCoffee 의 주식농사' 인스타그램 캐러셀 에�
 [출력: JSON만, 코드블록 없이]
 {
  "point": "이번 캐러셀이 전달할 단 하나의 포인트(내부용, 한 문장)",
+ "reel_hook": "릴스 첫 화면(1~2초 안에 읽히는 질문). | 로 2~3줄, 줄당 최대 9자. 독자가 이미 겪고 있는 상황(월급날·내 계좌·적금 만기·카드값·뉴스에서 본 말)으로 시작하는 질문. 금지 용어·상품명·ETF 이름·큰 금액(1억 등)·원화 금액·결론 숫자 금지. 핵심 단어 하나만 <g>로 강조. 예: '지수는 올랐는데|왜 <g>내 계좌</g>는|마이너스?', '월급 말고|<g>매달 들어오는 돈</g>|얼마면 될까?'",
  "cover": {"badge": "카테고리 + 이모지", "context": "누구 얘기인지 일상어로 한 줄(최대 30자, 예: 대출 있는 직장인이 월급 남는 돈을 어디에 쓸지)", "title": "훅, | 로 2~3줄, 최대 22자", "big": "힌트(정답 금지), 최대 8자", "sub": "| 로 2줄, 최대 30자", "quokka": "쿼카 키", "bubble": "쿼카 한마디 최대 10자", "save_sticker": true/false},
  "slides": [  // 6개(또는 5개), 순서는 위 [구성] 그대로. 아래는 type별 형식 예시
    {"type": "bignum", "badge": "💡 결론부터", "topic": "작은 주제 제목 최대 16자(예: 대출 vs 투자, 뭐부터?)", "title": "| 로 2줄", "value": "최대 6자", "label": "이 숫자가 뭔지 일상어로", "body": "1~2줄", "quokka": "쿼카 키"},
@@ -262,6 +263,7 @@ REVIEW_PROMPT = """너는 아래 독자 본인이다: {reader}
 3. 1장만 봐도 "내 얘기다" 싶은가? cover.big·sub·bubble에 결론이나 2장 숫자가 들어 있으면 반드시 힌트로 바꾼다(예: "기준은 딱 1개"). 2장만 봐도 주제(topic)와 결론이 보이나?
 3-1. 내용이 겹치거나 억지로 채운 장이 있으면 지운다(최소 5개는 유지).
 4. 말투가 친한 선배 카톡처럼 편한 존댓말인가(반말은 chat의 me 대사만)? 딱딱하거나 가르치는 말투면 고친다.
+3-2. reel_hook을 1초 만에 읽고 "어, 내 얘기네" 싶은가? 모르는 단어·상품명·큰 금액·원화 금액이 있거나 결론을 말해 버리면 독자의 일상 상황 질문으로 고친다(줄당 최대 9자, 2~3줄).
 5. 블로그 디테일을 너무 많이 넣지 않았나? 포인트 하나(point)에 집중하도록 덜어낸다.
 6. 숫자는 원문에 있는 것만인가? 원문에 없는 숫자는 삭제.
 
@@ -605,6 +607,71 @@ def slide_close(c, n, total) -> str:
             f'{q}{foot(True)}</section>')
 
 
+# ─── 릴스 첫 화면(훅 카드) — 2026-10-21 ───────────────
+# 근거: 릴스(슬라이드·영상 쇼츠 모두) 평균 시청 1~2초, 3초 안 건너뛰기 95%. 25~34세가 45%로 연령은 맞음.
+# 4:5 장표를 9:16 남색 바탕에 얹은 정지 화면(작은 글씨 + 블로그 주제 그대로의 질문)이 첫 3.2초를 차지했음.
+# → 슬라이드 릴스는 9:16 꽉 찬 '내 상황형' 질문 카드로 시작해 0프레임부터 줌으로 움직이고, 바로 2장(결론)으로 넘어간다.
+HOOK_SEC = 2.4
+
+HOOK_PROMPT = """인스타 릴스 첫 화면 문구를 쓴다. 독자: {reader}
+피드를 넘기던 이 독자가 1초 만에 읽고 "어, 내 얘기네" 하고 멈출 질문 하나.
+- 독자가 이미 겪고 있는 상황(월급날·내 계좌·적금 만기·카드값·뉴스에서 본 말)으로 시작한다.
+- 금지: 전문용어(레버리지·배당률·리밸런싱·환헤지 등), 상품명·ETF 이름, 큰 금액(1억 등)과 원화 금액, 결론·정답 숫자, 수익 자랑.
+- | 로 2~3줄, 줄당 최대 9자. 핵심 단어 하나만 <g>…</g>로 강조. 아래 글이 실제로 답하는 질문이어야 한다(낚시 금지).
+예: 지수는 올랐는데|왜 <g>내 계좌</g>는|마이너스?
+출력: 문구 한 줄만(설명·따옴표 없이).
+
+[글]
+{meta}
+"""
+
+
+def hook_text_for(carousel: dict) -> str:
+    """새 장표는 spec 의 reel_hook, 지난 장표(spec 없음)는 제목·캡션으로 한 번 더 만든다."""
+    hook = (carousel.get("reel_hook") or "").strip()
+    if hook:
+        return hook
+    try:
+        meta = {"title": carousel.get("title"), "caption": (carousel.get("caption") or "")[:400]}
+        msg = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY).messages.create(
+            model=MODEL, max_tokens=200, messages=[{"role": "user", "content": HOOK_PROMPT
+                .replace("{reader}", READER).replace("{meta}", json.dumps(meta, ensure_ascii=False))}])
+        hook = msg.content[0].text.strip().splitlines()[0].strip().strip('"')
+    except Exception as e:
+        print(f"훅 문구 생성 실패: {e}")
+        return ""
+    return hook if 4 <= len(plain(hook)) <= 40 else ""
+
+
+HOOK_CSS = """
+.s.hook{width:1080px;height:1920px;padding:230px 84px 0}
+.hook .brand{display:flex;align-items:center;gap:14px;font-size:32px;font-weight:700;color:rgba(255,255,255,.8)}
+.hook .brand b{color:var(--gold)}
+.hook h1{margin-top:70px;line-height:1.22;max-width:900px}
+.hook .ans{align-self:flex-start;margin-top:64px;background:var(--yel);color:var(--navy);font-weight:900;font-size:50px;
+  padding:20px 38px;border-radius:44px;transform:rotate(-2deg);box-shadow:0 10px 0 var(--gold),0 20px 36px rgba(0,0,0,.35)}
+.hook .qc{right:-10px;bottom:330px;height:600px}
+.hook .bubble{right:70px;bottom:940px}
+"""
+
+
+def render_hook_card(text: str, out: Path, quokka: str | None = None) -> Path:
+    q = quokka_img(quokka if quokka and (QUOKKA_DIR / f"{quokka}.webp").exists() else "magnifier_phone", "qc")
+    sec = (f'<section class="s hook"><div class="brand"><span class="logo">주식<br>농사</span>WhiteCoffee 의 주식농사 <b>@ayunfafa</b></div>'
+           f'<h1 style="{_fit(text, 120, 8)}">{t(text)}</h1>'
+           f'<div class="ans">답은 바로 다음 장 👉</div>{q}'
+           f'{"<div class=bubble>어? 나도?</div>" if q else ""}</section>')
+    doc = f"<!doctype html><html lang='ko'><head><meta charset='utf-8'><style>{CSS}{HOOK_CSS}</style></head><body>{sec}</body></html>"
+    with sync_playwright() as p:
+        b = p.chromium.launch()
+        pg = b.new_page(viewport={"width": 1080, "height": 1920})
+        pg.set_content(doc)
+        pg.wait_for_timeout(600)
+        pg.locator("section.s").first.screenshot(path=str(out), type="jpeg", quality=92)
+        b.close()
+    return out
+
+
 def render(spec: dict, out_dir: Path, variant: str = "navy") -> list[Path]:
     total = len(spec["slides"]) + 2
     parts = [slide_cover(spec["cover"], 1, total, variant)]
@@ -847,14 +914,17 @@ BGM_DIR = Path(__file__).resolve().parent / "assets" / "bgm"
 LAST_BGM = ""
 
 
-def make_slideshow(paths: list[Path], out: Path, pick: int | None = None) -> Path:
+def make_slideshow(paths: list[Path], out: Path, pick: int | None = None, hook_img: Path | None = None) -> Path:
+    """hook_img(1080x1920 훅 카드)가 있으면 그것을 첫 화면으로: 0프레임부터 살짝 당겨지는 줌(1.06→1.0) 후 천천히 확대."""
     global LAST_BGM
+    if hook_img:
+        paths = [hook_img, *paths]
     n = len(paths)
-    durs = [COVER_SEC] + [SLIDE_SEC] * (n - 1)
+    durs = ([HOOK_SEC] if hook_img else [COVER_SEC]) + [SLIDE_SEC] * (n - 1)
     total = sum(durs) - FADE * (n - 1)
     args = ["ffmpeg", "-y", "-loglevel", "error"]
     for p, d in zip(paths, durs):
-        args += ["-loop", "1", "-t", f"{d + FADE:.2f}", "-i", str(p)]
+        args += ["-framerate", "30", "-loop", "1", "-t", f"{d + FADE:.2f}", "-i", str(p)]
     # 배경음악: tools/make_bgm.py 로 직접 합성한 곡(코드 진행·드럼·멜로디, 저작권 없음)을 번갈아 씀.
     # 10/19 결정: 그루브(로파이) 기본 + 신나는 곡 1개를 번갈아 → 1~2주 뒤 곡별 도달 비교해 정리
     # (10/19 이전엔 사인파 화음 하나를 계속 깔아 '뚜~~' 지속음만 났음)
@@ -868,6 +938,11 @@ def make_slideshow(paths: list[Path], out: Path, pick: int | None = None) -> Pat
         args += ["-f", "lavfi", "-t", f"{total:.2f}", "-i", "anullsrc=r=44100:cl=stereo"]
     fc = []
     for i in range(n):  # 1080x1350 장표를 1080x1920 남색 바탕 가운데에
+        if hook_img and i == 0:  # 훅 카드: 2배로 키운 뒤 zoompan(떨림 방지), 0.4초 동안 1.06→1.0, 그 뒤 아주 천천히 확대
+            z = "if(lte(on,12),1.06-0.06*on/12,1+0.0012*(on-12))"
+            fc.append(f"[0:v]scale=2160:3840,zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30,"
+                      f"setsar=1,format=yuv420p[v0]")
+            continue
         fc.append(f"[{i}:v]scale=1080:1350,pad=1080:1920:0:285:color=0x1E2D4F,setsar=1,fps=30,format=yuv420p[v{i}]")
     last, off = "v0", 0.0
     for i in range(1, n):
@@ -902,10 +977,22 @@ def run_slide_reel(h: dict, carousel: dict | None):
         return
     if not reel_slot_open(h, "슬라이드 릴스"):
         return
-    hook = reel_hook(h)
-    print(f"슬라이드 릴스 첫 화면: {hook}")
     n_prev = sum(1 for x in h.get("reels", []) if x.get("kind") == "slides")
-    video = make_slideshow(hook_order(carousel["paths"], hook), carousel["out_dir"] / "reel.mp4", pick=n_prev)
+    hook_txt = hook_text_for(carousel)
+    hook_img = None
+    if hook_txt:  # 2026-10-21: 9:16 '내 상황형' 질문 카드 → 2장(결론)부터. 표지(1장)는 릴스에선 뺀다(같은 질문 반복)
+        try:
+            hook_img = render_hook_card(hook_txt, carousel["out_dir"] / "hook.jpg", carousel.get("quokka"))
+        except Exception as e:
+            print(f"훅 카드 렌더 실패(이전 방식 사용): {e}")
+    if hook_img:
+        hook = "card"
+        seq = list(carousel["paths"][1:])
+    else:
+        hook = reel_hook(h)
+        seq = hook_order(carousel["paths"], hook)
+    print(f"슬라이드 릴스 첫 화면: {hook} {plain(hook_txt) if hook_img else ''}")
+    video = make_slideshow(seq, carousel["out_dir"] / "reel.mp4", pick=n_prev, hook_img=hook_img)
     print(f"슬라이드 릴스 영상: {video} ({video.stat().st_size // 1024}KB)")
     lines = carousel["caption"].split("\n\n")
     caption = carousel["caption"] if (len(lines) < 2 or carousel.get("feed") in (False, "backlog")) else \
@@ -916,7 +1003,8 @@ def run_slide_reel(h: dict, carousel: dict | None):
     media_id = publish_reel(host_temp_video(video), caption, load_token())
     print(f"슬라이드 릴스 발행 완료! media_id={media_id}")
     h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": f"slides_{carousel['stamp']}",
-                                     "kind": "slides", "hook": hook, "slot": "noon" if datetime.now(KST).hour < 17 else "evening",
+                                     "kind": "slides", "hook": hook, "hook_text": plain(hook_txt) if hook_img else "",
+                                     "slot": "noon" if datetime.now(KST).hour < 17 else "evening",
                                      "title": carousel["title"], "bgm": LAST_BGM, "media_id": media_id})
     if carousel.get("feed") is False:  # 피드 쉬는 날 쓴 글도 다시 고르지 않게 기록
         h.setdefault("posted", []).append(carousel["link"])
@@ -1081,10 +1169,10 @@ def run_carousel(h: dict, feed: bool = True):
             print(f"토큰 확인 OK: @{me.get('username')} ({me.get('account_type')}), id={me.get('user_id')}")
         print("DRY RUN — 업로드하지 않고 종료합니다. (Actions 아티팩트에서 이미지 확인)")
         return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp,
-                "feed": feed, "link": post["link"], "cover": variant}
+                "feed": feed, "link": post["link"], "cover": variant, "reel_hook": spec.get("reel_hook", ""), "quokka": spec.get("cover", {}).get("quokka")}
     if not feed:  # 피드에는 안 올리고 슬라이드 릴스 재료로만 넘김(기록은 릴스 발행 성공 후)
         return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp,
-                "feed": False, "link": post["link"], "cover": variant}
+                "feed": False, "link": post["link"], "cover": variant, "reel_hook": spec.get("reel_hook", ""), "quokka": spec.get("cover", {}).get("quokka")}
 
     if not (IG_USER_ID and IG_SECRET_TOKEN):
         raise RuntimeError("GitHub Secrets에 IG_USER_ID / IG_ACCESS_TOKEN이 없습니다")
@@ -1097,7 +1185,8 @@ def run_carousel(h: dict, feed: bool = True):
     h.setdefault("log", []).append({"at": datetime.now(KST).isoformat(), "link": post["link"],
                                     "title": title, "media_id": media_id, "images": stamp, "cover": variant})
     save_history(h)
-    return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp}
+    return {"paths": paths, "out_dir": out_dir, "caption": caption, "title": title, "stamp": stamp,
+            "reel_hook": spec.get("reel_hook", ""), "quokka": spec.get("cover", {}).get("quokka")}
 
 
 if __name__ == "__main__":
