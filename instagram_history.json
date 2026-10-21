@@ -13,7 +13,8 @@
     "https://ideas07576.tistory.com/282",
     "https://ideas07576.tistory.com/333",
     "https://ideas07576.tistory.com/332",
-    "https://ideas07576.tistory.com/334"
+    "https://ideas07576.tistory.com/334",
+    "https://ideas07576.tistory.com/335"
   ],
   "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
   "log": [
@@ -125,6 +126,14 @@
       "media_id": "17904933114597539",
       "images": "20261020_2047",
       "cover": "navy"
+    },
+    {
+      "at": "2026-10-21T20:48:13.772424+09:00",
+      "link": "https://ideas07576.tistory.com/335",
+      "title": "SK하이닉스 반토막 회복 기간 — 과거 3번, 2.6년·3.0년·7.6년",
+      "images": "20261021_2047",
+      "cover": "cream",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -197,6 +206,17 @@
       "item": "20261021_kodex-lev-recovery",
       "title": "KODEX 레버리지 손실 회복? 코스피가 돌아와도 −24%입니다",
       "media_id": "18061475186543069"
+    },
+    {
+      "at": "2026-10-21T20:48:13.772239+09:00",
+      "item": "slides_20261021_2047",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "하이닉스반토막 났는데얼마나 기다려?",
+      "slot": "evening",
+      "title": "SK하이닉스 반토막 회복 기간 — 과거 3번, 2.6년·3.0년·7.6년",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18166240489469747"
     }
   ]
 }
