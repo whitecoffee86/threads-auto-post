@@ -14,7 +14,8 @@
     "https://ideas07576.tistory.com/333",
     "https://ideas07576.tistory.com/332",
     "https://ideas07576.tistory.com/334",
-    "https://ideas07576.tistory.com/335"
+    "https://ideas07576.tistory.com/335",
+    "https://ideas07576.tistory.com/331"
   ],
   "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
   "log": [
@@ -134,6 +135,14 @@
       "images": "20261021_2047",
       "cover": "cream",
       "reel_only": true
+    },
+    {
+      "at": "2026-10-22T20:48:33.177721+09:00",
+      "link": "https://ideas07576.tistory.com/331",
+      "title": "QQQM 반도체 비중 얼마나 될까 — 상위 25개 중 28.7%, 내 계좌로는 12%",
+      "media_id": "18635431465002718",
+      "images": "20261022_2047",
+      "cover": "cream"
     }
   ],
   "reels": [
@@ -223,6 +232,17 @@
       "item": "20261022_btc-bear-no-panic",
       "title": "뉴스에선 반토막인데 내 계좌는 얼마나 줄까?",
       "media_id": "18041268077834992"
+    },
+    {
+      "at": "2026-10-22T20:49:24.707794+09:00",
+      "item": "slides_20261022_2047",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "반도체 ETF산 적 없는데왜 있지?",
+      "slot": "evening",
+      "title": "QQQM 반도체 비중 얼마나 될까 — 상위 25개 중 28.7%, 내 계좌로는 12%",
+      "bgm": "bgm_01_morning_groove",
+      "media_id": "17928672174424636"
     }
   ]
 }
