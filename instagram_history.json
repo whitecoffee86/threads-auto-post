@@ -15,7 +15,8 @@
     "https://ideas07576.tistory.com/332",
     "https://ideas07576.tistory.com/334",
     "https://ideas07576.tistory.com/335",
-    "https://ideas07576.tistory.com/331"
+    "https://ideas07576.tistory.com/331",
+    "https://ideas07576.tistory.com/340"
   ],
   "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
   "log": [
@@ -143,6 +144,14 @@
       "media_id": "18635431465002718",
       "images": "20261022_2047",
       "cover": "cream"
+    },
+    {
+      "at": "2026-10-23T20:49:13.065993+09:00",
+      "link": "https://ideas07576.tistory.com/340",
+      "title": "유가 100달러 넘으면 주가는 — 넘은 뒤 6개월, 4번 중 3번 하락",
+      "images": "20261023_2047",
+      "cover": "navy",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -249,6 +258,17 @@
       "item": "20261023_etf-account-tax-10y",
       "title": "매달 같은 돈 모아도, 어디에 넣느냐로 달라져?",
       "media_id": "18589940515070070"
+    },
+    {
+      "at": "2026-10-23T20:49:13.065774+09:00",
+      "item": "slides_20261023_2047",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "기름값 뉴스에주식 팔아야 하나?싶을 때",
+      "slot": "evening",
+      "title": "유가 100달러 넘으면 주가는 — 넘은 뒤 6개월, 4번 중 3번 하락",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18098478059400921"
     }
   ]
 }
