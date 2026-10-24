@@ -16,7 +16,8 @@
     "https://ideas07576.tistory.com/334",
     "https://ideas07576.tistory.com/335",
     "https://ideas07576.tistory.com/331",
-    "https://ideas07576.tistory.com/340"
+    "https://ideas07576.tistory.com/340",
+    "https://ideas07576.tistory.com/341"
   ],
   "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
   "log": [
@@ -152,6 +153,14 @@
       "images": "20261023_2047",
       "cover": "navy",
       "reel_only": true
+    },
+    {
+      "at": "2026-10-24T20:47:54.120333+09:00",
+      "link": "https://ideas07576.tistory.com/341",
+      "title": "유가 환율 관계 — 유가 30% 넘게 오른 9번, 환율은 5번 내렸다",
+      "media_id": "17938104684127744",
+      "images": "20261024_2047",
+      "cover": "navy"
     }
   ],
   "reels": [
@@ -280,6 +289,17 @@
       "title": "대출 상환 vs 투자 비율 (월 100만원 10년 시뮬레이션)",
       "bgm": "bgm_01_morning_groove",
       "media_id": "18082335602708877"
+    },
+    {
+      "at": "2026-10-24T20:48:41.118169+09:00",
+      "item": "slides_20261024_2047",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "유가 올랐다는데환전 서둘러야 해?",
+      "slot": "evening",
+      "title": "유가 환율 관계 — 유가 30% 넘게 오른 9번, 환율은 5번 내렸다",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18031375187683639"
     }
   ]
 }
