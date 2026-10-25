@@ -1407,6 +1407,45 @@ def _source_post(link: str, title: str, summary: str = "") -> dict:
     return {"title": title, "link": link or "", "summary": summary or title, "category": ""}
 
 
+def _norm(link: str) -> str:
+    return (link or "").rstrip("/")
+
+
+def _recent_thread_links(data: dict, hours: int = 72) -> set:
+    """최근 hours 시간 안에 스레드에 올린 글의 블로그 링크."""
+    cutoff = datetime.now(KST) - timedelta(hours=hours)
+    out = set()
+    for r in data.get("recent_posts") or []:
+        try:
+            if datetime.fromisoformat(r["at"]) >= cutoff and r.get("link"):
+                out.add(_norm(r["link"]))
+        except Exception:
+            continue
+    return out
+
+
+def _ig_links(days: int = 5, pending_only: bool = False, data: dict | None = None) -> set:
+    """인스타가 최근 days 일 안에 쓴 글 링크. pending_only 면 아직 스레드 캐러셀로 안 나간 장표의 링크만
+    (= 다음 날 12시 캐러셀 슬롯 몫)."""
+    try:
+        h = json.loads(IG_HISTORY.read_text(encoding="utf-8")) if IG_HISTORY.exists() else {}
+    except Exception:
+        return set()
+    used = set((data or {}).get("threads_carousels", []))
+    cutoff = datetime.now(KST) - timedelta(days=days)
+    out = set()
+    for x in h.get("log", []):
+        try:
+            if datetime.fromisoformat(x["at"]) < cutoff or not x.get("link"):
+                continue
+        except Exception:
+            continue
+        if pending_only and (not x.get("images") or str(x["images"]) in used):
+            continue
+        out.add(_norm(x["link"]))
+    return out
+
+
 def publish_carousel_slot(data: dict) -> bool:
     """인스타에 올린 캐러셀 장표(ig_images/<stamp>/1.jpg…)를 스레드 캐러셀로. 최근 것부터, 한 번씩만."""
     try:
@@ -1424,6 +1463,8 @@ def publish_carousel_slot(data: dict) -> bool:
             continue
         if not stamp or stamp in used or at < cutoff or not d.is_dir():
             continue
+        if _norm(x.get("link", "")) in _recent_thread_links(data, hours=48):
+            continue  # 이틀 안에 같은 글이 스레드에 나갔으면 다음 장표로
         paths = sorted(d.glob("*.jpg"), key=lambda q: int(q.stem) if q.stem.isdigit() else 99)
         if len(paths) < 2:
             continue
@@ -1467,6 +1508,12 @@ def publish_video_slot(data: dict) -> bool:
     if not vid or vid in data.get("threads_videos", []) or not fresh:
         print(f"새 영상 없음(id={vid or '-'}, 16시간 안: {fresh})")
         return False
+    # 2026-10-25: 같은 글이 21시 영상 → 다음 날 12시 캐러셀로 15시간 만에 또 나가던 것 막기.
+    # 캐러셀(글당 조회 최고) 몫이거나 최근 3일 안에 스레드에 나간 글이면 영상은 건너뛰고 블로그 카드(과거 글)로.
+    vlink = _norm(meta.get("link", ""))
+    if vlink and (vlink in _ig_links(5, pending_only=True, data=data) or vlink in _recent_thread_links(data)):
+        print(f"영상 글이 캐러셀 몫이거나 최근 스레드에 나간 글({vlink}) — 같은 소재 반복 방지로 건너뜀")
+        return False
     post = _source_post(meta.get("link", ""), meta.get("title", ""), meta.get("summary", ""))
     recent = data.get("recent_posts", [])
     fmt = pick_format(recent)
@@ -1494,7 +1541,12 @@ def publish_blog_slot(data: dict, today) -> bool:
                 data["short_term_done"].add(p["link"])
                 return True
     done = data["cycle_published"]
-    cands = blog_source.candidates(done, {SHORT_TERM_CATEGORY}, k=2, rss=rss)
+    # 2026-10-25: 새 글(RSS)은 인스타 → 다음 날 12시 캐러셀로 어차피 나감. 블로그 카드는 과거 글로 돌려
+    # 하루 세 슬롯이 같은 글·같은 소재(10/23~25 유가 3연속)로 겹치지 않게. 과거 글이 없을 때만 새 글.
+    avoid = _recent_thread_links(data) | _ig_links(5) | {_norm(p["link"]) for p in rss}
+    cands = blog_source.candidates(set(done) | avoid, {SHORT_TERM_CATEGORY}, k=2, rss=rss)
+    if not cands:
+        cands = blog_source.candidates(set(done) | _recent_thread_links(data), {SHORT_TERM_CATEGORY}, k=2, rss=rss)
     if not cands:
         print(f"블로그 글 {blog_source.total_posts()}개를 한 바퀴 다 씀 — 기록 초기화 후 다시 시작")
         data["cycle_published"] = set()
