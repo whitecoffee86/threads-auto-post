@@ -82,6 +82,9 @@ def fetch_detail(link: str) -> dict | None:
             "body": text[:14000], "pub_date": None}
 
 
+RESULT_TITLE = re.compile(r"결산|수익\s*:|매매\s*일지")
+
+
 def candidates(done: set, skip_categories: set, recent_days: int = 7, k: int = 1,
                rss: list | None = None, fresh_days: int | None = None) -> list[dict]:
     """아직 안 쓴 글 k개. 1순위 최근 RSS 새 글, 2순위 사이트맵 과거 글(무작위 — 주제가 골고루 섞이게).
@@ -108,8 +111,8 @@ def candidates(done: set, skip_categories: set, recent_days: int = 7, k: int = 1
     random.shuffle(pool)
     for s in pool[:k * 6]:  # 카테고리 제외·읽기 실패를 감안해 넉넉히 시도
         d = next((p for p in rss if p["link"] == s["link"]), None) or fetch_detail(s["link"])
-        if not d or d["category"] in skip_categories:
-            continue
+        if not d or d["category"] in skip_categories or RESULT_TITLE.search(d.get("title", "")):
+            continue  # 2026-10-25: 월 결산·수익 공개 글(계좌 손익 숫자)은 과거 글 재료에서 뺌
         d = dict(d, past=True, summary=PAST_NOTE + d["summary"])
         out.append(d)
         if len(out) >= k:
