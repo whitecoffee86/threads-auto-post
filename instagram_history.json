@@ -17,7 +17,8 @@
     "https://ideas07576.tistory.com/335",
     "https://ideas07576.tistory.com/331",
     "https://ideas07576.tistory.com/340",
-    "https://ideas07576.tistory.com/341"
+    "https://ideas07576.tistory.com/341",
+    "https://ideas07576.tistory.com/342"
   ],
   "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
   "log": [
@@ -161,6 +162,14 @@
       "media_id": "17938104684127744",
       "images": "20261024_2047",
       "cover": "navy"
+    },
+    {
+      "at": "2026-10-25T20:47:16.558636+09:00",
+      "link": "https://ideas07576.tistory.com/342",
+      "title": "유가 100달러 지속 기간 — 고점까지 중간값 2개월, 고점 1년 뒤 4번 모두 하락",
+      "images": "20261025_2046",
+      "cover": "cream",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -311,6 +320,17 @@
       "title": "대출금리 몇 퍼센트부터 투자 손해일까 (손익 분기 계산기)",
       "bgm": "bgm_01_morning_groove",
       "media_id": "17913450486494383"
+    },
+    {
+      "at": "2026-10-25T20:47:16.558481+09:00",
+      "item": "slides_20261025_2046",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "기름값 뉴스 보고지금 사면늦은 걸까?",
+      "slot": "evening",
+      "title": "유가 100달러 지속 기간 — 고점까지 중간값 2개월, 고점 1년 뒤 4번 모두 하락",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18130306219873539"
     }
   ]
 }
