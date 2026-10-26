@@ -18,9 +18,10 @@
     "https://ideas07576.tistory.com/331",
     "https://ideas07576.tistory.com/340",
     "https://ideas07576.tistory.com/341",
-    "https://ideas07576.tistory.com/342"
+    "https://ideas07576.tistory.com/342",
+    "https://ideas07576.tistory.com/343"
   ],
-  "token_refreshed_at": "2026-10-17T20:47:08.815119+09:00",
+  "token_refreshed_at": "2026-10-26T19:08:12.854604+09:00",
   "log": [
     {
       "at": "2026-10-09T17:02:00+09:00",
@@ -170,6 +171,14 @@
       "images": "20261025_2046",
       "cover": "cream",
       "reel_only": true
+    },
+    {
+      "at": "2026-10-26T19:08:53.196316+09:00",
+      "link": "https://ideas07576.tistory.com/343",
+      "title": "미국 중간선거 주가 — 선거일에 산 S&P500, 1년 뒤 19번 모두 올랐다",
+      "media_id": "18133056136822864",
+      "images": "20261026_1908",
+      "cover": "cream"
     }
   ],
   "reels": [
@@ -337,6 +346,17 @@
       "item": "20261026_oil-100-stocks",
       "title": "기름값 뉴스 뜨면 내 주식은 팔아야 해?",
       "media_id": "18097826192423556"
+    },
+    {
+      "at": "2026-10-26T19:09:45.860195+09:00",
+      "item": "slides_20261026_1908",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "미국 선거 뉴스 보고적립 멈출까고민 중이에요",
+      "slot": "evening",
+      "title": "미국 중간선거 주가 — 선거일에 산 S&P500, 1년 뒤 19번 모두 올랐다",
+      "bgm": "bgm_01_morning_groove",
+      "media_id": "18116263067026692"
     }
   ]
 }
