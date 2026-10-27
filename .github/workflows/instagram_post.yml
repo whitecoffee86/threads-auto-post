@@ -41,9 +41,11 @@ jobs:
           python-version: '3.11'
 
       - name: 패키지·한글 폰트 설치
-        timeout-minutes: 10
+        timeout-minutes: 14
         run: |
-          for i in 1 2 3; do sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-color-emoji ffmpeg && break; sleep 15; done
+          # 2026-10-27: apt 미러가 응답 없이 멈춰 10분 타임아웃 실패가 반복됨 → 시도마다 시간 제한을 걸어 재시도가 실제로 돌게 함
+          APT_OPTS='-o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=2'
+          for i in 1 2 3; do sudo timeout 120 apt-get $APT_OPTS update -qq && sudo timeout 180 apt-get $APT_OPTS install -y -qq fonts-noto-cjk fonts-noto-color-emoji ffmpeg && break; sudo dpkg --configure -a || true; sleep 10; done
           pip install anthropic feedparser requests playwright cryptography
           playwright install --with-deps chromium
 
