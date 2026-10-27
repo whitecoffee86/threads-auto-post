@@ -19,7 +19,8 @@
     "https://ideas07576.tistory.com/340",
     "https://ideas07576.tistory.com/341",
     "https://ideas07576.tistory.com/342",
-    "https://ideas07576.tistory.com/343"
+    "https://ideas07576.tistory.com/343",
+    "https://ideas07576.tistory.com/344"
   ],
   "token_refreshed_at": "2026-10-26T19:08:12.854604+09:00",
   "log": [
@@ -179,6 +180,14 @@
       "media_id": "18133056136822864",
       "images": "20261026_1908",
       "cover": "cream"
+    },
+    {
+      "at": "2026-10-27T20:48:00.768329+09:00",
+      "link": "https://ideas07576.tistory.com/344",
+      "title": "미국 대통령 임기 주가 사이클 — 2년차 중간값 +1.1%, 3년차는 19번 중 17번 상승",
+      "images": "20261027_2047",
+      "cover": "navy",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -363,6 +372,17 @@
       "item": "20261027_gold-tax-krx-etf",
       "title": "금값 올랐다는 뉴스, 내 금도 올랐을까?",
       "media_id": "18195871648403614"
+    },
+    {
+      "at": "2026-10-27T20:48:00.768151+09:00",
+      "item": "slides_20261027_2047",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "올해 유독계좌가왜 이래?",
+      "slot": "evening",
+      "title": "미국 대통령 임기 주가 사이클 — 2년차 중간값 +1.1%, 3년차는 19번 중 17번 상승",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18091500878691862"
     }
   ]
 }
