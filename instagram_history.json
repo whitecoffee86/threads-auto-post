@@ -20,7 +20,8 @@
     "https://ideas07576.tistory.com/341",
     "https://ideas07576.tistory.com/342",
     "https://ideas07576.tistory.com/343",
-    "https://ideas07576.tistory.com/344"
+    "https://ideas07576.tistory.com/344",
+    "https://ideas07576.tistory.com/336"
   ],
   "token_refreshed_at": "2026-10-26T19:08:12.854604+09:00",
   "log": [
@@ -188,6 +189,14 @@
       "images": "20261027_2047",
       "cover": "navy",
       "reel_only": true
+    },
+    {
+      "at": "2026-10-28T19:03:59.459056+09:00",
+      "link": "https://ideas07576.tistory.com/336",
+      "title": "솔리다임 상장 SK하이닉스 주가 영향 — 중복상장 논란, 1,000만원으로 계산",
+      "media_id": "18116035277025033",
+      "images": "20261028_1903",
+      "cover": "navy"
     }
   ],
   "reels": [
@@ -389,6 +398,17 @@
       "item": "20261028_hynix-half-recovery",
       "title": "뉴스는 반토막이라는데 지금 사면 싼 걸까?",
       "media_id": "18348840238248650"
+    },
+    {
+      "at": "2026-10-28T19:05:14.063458+09:00",
+      "item": "slides_20261028_1903",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "뉴스 보고주식 팔았는데그거 맞아?",
+      "slot": "evening",
+      "title": "솔리다임 상장 SK하이닉스 주가 영향 — 중복상장 논란, 1,000만원으로 계산",
+      "bgm": "bgm_01_morning_groove",
+      "media_id": "18136433827658197"
     }
   ]
 }
