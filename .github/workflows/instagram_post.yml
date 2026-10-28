@@ -40,14 +40,25 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: apt 패키지 캐시
+        uses: actions/cache@v4
+        with:
+          path: ~/apt-cache
+          key: apt-noble-fonts-ffmpeg-v1
+
       - name: 패키지·한글 폰트 설치
         timeout-minutes: 14
         run: |
           # 2026-10-27: apt 미러가 응답 없이 멈춰 10분 타임아웃 실패가 반복됨 → 시도마다 시간 제한을 걸어 재시도가 실제로 돌게 함
-          APT_OPTS='-o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=2'
+          # 2026-10-28: 느린 미러(~100KB/s)에선 재시도로도 못 받음 → 받은 .deb 를 캐시해 다시 안 받음, 설치 실패면 글꼴 없는 장표가 나가지 않게 여기서 멈춤
+          mkdir -p ~/apt-cache/partial
+          APT_OPTS="-o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o Acquire::Retries=2 -o Dir::Cache::Archives=$HOME/apt-cache"
           for i in 1 2 3; do sudo timeout 120 apt-get $APT_OPTS update -qq && sudo timeout 180 apt-get $APT_OPTS install -y -qq fonts-noto-cjk fonts-noto-color-emoji ffmpeg && break; sudo dpkg --configure -a || true; sleep 10; done
+          dpkg -s fonts-noto-cjk ffmpeg >/dev/null || { echo "::error::apt 설치 실패(미러 지연)"; exit 1; }
+          sudo rm -rf ~/apt-cache/partial ~/apt-cache/lock; sudo chown -R "$USER" ~/apt-cache
           pip install anthropic feedparser requests playwright cryptography
-          playwright install --with-deps chromium
+          # 크롬 실행 라이브러리는 러너 이미지에 이미 있음(--with-deps 는 쓰지 않는 글꼴 ~20MB 만 더 받아 느린 미러에서 멈췄음)
+          playwright install chromium
 
       - name: git 설정
         run: |
