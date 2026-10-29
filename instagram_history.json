@@ -21,7 +21,8 @@
     "https://ideas07576.tistory.com/342",
     "https://ideas07576.tistory.com/343",
     "https://ideas07576.tistory.com/344",
-    "https://ideas07576.tistory.com/336"
+    "https://ideas07576.tistory.com/336",
+    "https://ideas07576.tistory.com/345"
   ],
   "token_refreshed_at": "2026-10-26T19:08:12.854604+09:00",
   "log": [
@@ -197,6 +198,14 @@
       "media_id": "18116035277025033",
       "images": "20261028_1903",
       "cover": "navy"
+    },
+    {
+      "at": "2026-10-29T19:27:59.015658+09:00",
+      "link": "https://ideas07576.tistory.com/345",
+      "title": "미국 중간선거 코스피 영향 — S&P500은 7번 모두 올랐고, 코스피는 평소와 같았다",
+      "images": "20261029_1927",
+      "cover": "cream",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -415,6 +424,17 @@
       "item": "20261029_fx-up-sell-stocks",
       "title": "달러 오른다는 뉴스, 내 주식은 팔아야 해?",
       "media_id": "18470098987142730"
+    },
+    {
+      "at": "2026-10-29T19:27:59.015452+09:00",
+      "item": "slides_20261029_1927",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "미국 선거 끝나면내 계좌도오를까?",
+      "slot": "evening",
+      "title": "미국 중간선거 코스피 영향 — S&P500은 7번 모두 올랐고, 코스피는 평소와 같았다",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18146361643594583"
     }
   ]
 }
