@@ -22,7 +22,8 @@
     "https://ideas07576.tistory.com/343",
     "https://ideas07576.tistory.com/344",
     "https://ideas07576.tistory.com/336",
-    "https://ideas07576.tistory.com/345"
+    "https://ideas07576.tistory.com/345",
+    "https://ideas07576.tistory.com/347"
   ],
   "token_refreshed_at": "2026-10-26T19:08:12.854604+09:00",
   "log": [
@@ -206,6 +207,14 @@
       "images": "20261029_1927",
       "cover": "cream",
       "reel_only": true
+    },
+    {
+      "at": "2026-10-30T19:31:06.451310+09:00",
+      "link": "https://ideas07576.tistory.com/347",
+      "title": "순자산 상위 10% 커트라인 — 11억, 중간 가구는 2억 3,860만원",
+      "media_id": "17915097975551865",
+      "images": "20261030_1930",
+      "cover": "cream"
     }
   ],
   "reels": [
@@ -441,6 +450,17 @@
       "item": "20261030_schd-dividend-calc-1545",
       "title": "다들 별로라는 걸 계속 사도 될까?",
       "media_id": "17911109676487943"
+    },
+    {
+      "at": "2026-10-30T19:32:12.730958+09:00",
+      "item": "slides_20261030_1930",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "평균 자산4억7천이래나만 못 모은 건가?",
+      "slot": "evening",
+      "title": "순자산 상위 10% 커트라인 — 11억, 중간 가구는 2억 3,860만원",
+      "bgm": "bgm_01_morning_groove",
+      "media_id": "17912430630308670"
     }
   ]
 }
