@@ -226,13 +226,29 @@ def generate_standalone_post(recent_posts: list, fmt: str, topic: tuple) -> str:
 
 
 def pick_format(recent_posts: list) -> str:
-    """최근에 쓴 포맷과 겹치지 않게 다음 포맷을 순서대로 고름."""
+    """최근에 쓴 포맷과 겹치지 않게 다음 포맷을 순서대로 고름.
+    format_order 에 같은 포맷이 여러 번 들어 있어도(잘 되는 포맷 비중 늘리기) 순서가 끊기지 않게,
+    최근 포맷 흐름과 가장 길게 맞는 위치를 찾아 그다음 것을 고른다."""
     if not recent_posts:
         return FORMAT_ORDER[0]
-    last = recent_posts[-1].get("format")
-    if last in FORMAT_ORDER:
-        return FORMAT_ORDER[(FORMAT_ORDER.index(last) + 1) % len(FORMAT_ORDER)]
-    return FORMAT_ORDER[len(recent_posts) % len(FORMAT_ORDER)]
+    n = len(FORMAT_ORDER)
+    fmts = [r.get("format") for r in recent_posts]
+    best, best_score = None, 0
+    for p in range(n):
+        score = 0
+        for k in range(min(n, len(fmts))):
+            if FORMAT_ORDER[(p - k) % n] == fmts[-1 - k]:
+                score += 1
+            else:
+                break
+        if score > best_score:
+            best, best_score = p, score
+    if best is None:
+        return FORMAT_ORDER[len(recent_posts) % n]
+    nxt = FORMAT_ORDER[(best + 1) % n]
+    if nxt == fmts[-1]:  # 같은 포맷 연속 방지
+        nxt = FORMAT_ORDER[(best + 2) % n]
+    return nxt
 
 
 def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
