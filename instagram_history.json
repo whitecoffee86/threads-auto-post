@@ -492,6 +492,17 @@
       "title": "30대 자산 중위값 — 순자산 1억 5,585만원, 평균보다 1억 적은 이유",
       "bgm": "bgm_01_morning_groove",
       "media_id": "18142180141619473"
+    },
+    {
+      "at": "2026-11-01T12:46:51.370723+09:00",
+      "item": "slides_20261012_2047",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "같은 ETF인데어디서 사야덜 떼일까?",
+      "slot": "noon",
+      "title": "S&P500 ETF 국내상장 vs 미국상장 어디서 살까 — 상황별 선택표 5가지",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "17913397020473859"
     }
   ]
 }
