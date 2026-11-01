@@ -24,7 +24,8 @@
     "https://ideas07576.tistory.com/336",
     "https://ideas07576.tistory.com/345",
     "https://ideas07576.tistory.com/347",
-    "https://ideas07576.tistory.com/348"
+    "https://ideas07576.tistory.com/348",
+    "https://ideas07576.tistory.com/349"
   ],
   "token_refreshed_at": "2026-10-26T19:08:12.854604+09:00",
   "log": [
@@ -224,6 +225,14 @@
       "images": "20261031_1924",
       "cover": "navy",
       "reel_only": true
+    },
+    {
+      "at": "2026-11-01T19:50:59.134130+09:00",
+      "link": "https://ideas07576.tistory.com/349",
+      "title": "직장인 평균 저축률 — 가구 평균 30.8%, 내 저축률이면 1억까지 몇 년",
+      "media_id": "17917148454524756",
+      "images": "20261101_1950",
+      "cover": "navy"
     }
   ],
   "reels": [
@@ -503,6 +512,17 @@
       "title": "S&P500 ETF 국내상장 vs 미국상장 어디서 살까 — 상황별 선택표 5가지",
       "bgm": "bgm_02_sunny_drive",
       "media_id": "17913397020473859"
+    },
+    {
+      "at": "2026-11-01T19:52:34.605742+09:00",
+      "item": "slides_20261101_1950",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "매달 조금더 남겼을 뿐인데1억이 빨라졌어요",
+      "slot": "evening",
+      "title": "직장인 평균 저축률 — 가구 평균 30.8%, 내 저축률이면 1억까지 몇 년",
+      "bgm": "bgm_01_morning_groove",
+      "media_id": "18051578045820177"
     }
   ]
 }
