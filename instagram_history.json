@@ -25,7 +25,8 @@
     "https://ideas07576.tistory.com/345",
     "https://ideas07576.tistory.com/347",
     "https://ideas07576.tistory.com/348",
-    "https://ideas07576.tistory.com/349"
+    "https://ideas07576.tistory.com/349",
+    "https://ideas07576.tistory.com/350"
   ],
   "token_refreshed_at": "2026-10-26T19:08:12.854604+09:00",
   "log": [
@@ -233,6 +234,14 @@
       "media_id": "17917148454524756",
       "images": "20261101_1950",
       "cover": "navy"
+    },
+    {
+      "at": "2026-11-02T20:44:22.104546+09:00",
+      "link": "https://ideas07576.tistory.com/350",
+      "title": "JEPQ 배당금 계산 — 1억이면 세후 월 83만원, 월 100만원은 1,545주",
+      "images": "20261102_2043",
+      "cover": "cream",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -529,6 +538,17 @@
       "item": "20261102_tlt-bargain-6weeks",
       "title": "가장 싸다는 뉴스, 지금 사도 될까?",
       "media_id": "18122359663899146"
+    },
+    {
+      "at": "2026-11-02T20:44:22.104507+09:00",
+      "item": "slides_20261102_2043",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "월배당 ETF진짜 얼마들어올까?",
+      "slot": "evening",
+      "title": "JEPQ 배당금 계산 — 1억이면 세후 월 83만원, 월 100만원은 1,545주",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18601967131068547"
     }
   ]
 }
