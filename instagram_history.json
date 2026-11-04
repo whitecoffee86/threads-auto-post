@@ -27,7 +27,8 @@
     "https://ideas07576.tistory.com/348",
     "https://ideas07576.tistory.com/349",
     "https://ideas07576.tistory.com/350",
-    "https://ideas07576.tistory.com/351"
+    "https://ideas07576.tistory.com/351",
+    "https://ideas07576.tistory.com/352"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -251,6 +252,14 @@
       "media_id": "17999524620102582",
       "images": "20261103_2023",
       "cover": "cream"
+    },
+    {
+      "at": "2026-11-04T20:40:08.035620+09:00",
+      "link": "https://ideas07576.tistory.com/352",
+      "title": "1억 예금 한달 이자 — 연 3.6%면 세후 월 25만 3,800원",
+      "images": "20261104_2039",
+      "cover": "navy",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -576,6 +585,17 @@
       "item": "20261104_midterm-sp500-19",
       "title": "선거 뉴스 뜨면, 내 적립 멈춰야 해?",
       "media_id": "17870537301662819"
+    },
+    {
+      "at": "2026-11-04T20:40:08.035584+09:00",
+      "item": "slides_20261104_2039",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "1억 예금하면한 달에얼마 들어와요?",
+      "slot": "evening",
+      "title": "1억 예금 한달 이자 — 연 3.6%면 세후 월 25만 3,800원",
+      "bgm": "bgm_01_morning_groove",
+      "media_id": "18132863014693652"
     }
   ]
 }
