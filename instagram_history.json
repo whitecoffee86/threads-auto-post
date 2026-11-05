@@ -28,7 +28,8 @@
     "https://ideas07576.tistory.com/349",
     "https://ideas07576.tistory.com/350",
     "https://ideas07576.tistory.com/351",
-    "https://ideas07576.tistory.com/352"
+    "https://ideas07576.tistory.com/352",
+    "https://ideas07576.tistory.com/353"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -260,6 +261,14 @@
       "images": "20261104_2039",
       "cover": "navy",
       "reel_only": true
+    },
+    {
+      "at": "2026-11-05T20:32:45.932137+09:00",
+      "link": "https://ideas07576.tistory.com/353",
+      "title": "3억 예금 한달 이자 — 세후 월 76만원, 생활비 300만원엔 11억 8천만원",
+      "media_id": "17945602845361744",
+      "images": "20261105_2032",
+      "cover": "navy"
     }
   ],
   "reels": [
@@ -602,6 +611,12 @@
       "item": "20261104_midterm-sp500-19",
       "title": "선거 뉴스 뜨면, 내 적립 멈춰야 해?",
       "media_id": "17876316819650121"
+    },
+    {
+      "at": "2026-11-05T20:33:45.605041+09:00",
+      "item": "20261105_split-buy-30pct",
+      "title": "떨어질 때마다 사면 내 현금은 언제 바닥?",
+      "media_id": "18132923377771578"
     }
   ]
 }
