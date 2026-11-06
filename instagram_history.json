@@ -29,7 +29,8 @@
     "https://ideas07576.tistory.com/350",
     "https://ideas07576.tistory.com/351",
     "https://ideas07576.tistory.com/352",
-    "https://ideas07576.tistory.com/353"
+    "https://ideas07576.tistory.com/353",
+    "https://ideas07576.tistory.com/354"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -269,6 +270,14 @@
       "media_id": "17945602845361744",
       "images": "20261105_2032",
       "cover": "navy"
+    },
+    {
+      "at": "2026-11-06T20:33:53.107017+09:00",
+      "link": "https://ideas07576.tistory.com/354",
+      "title": "10억 예금 이자 세금 — 연 3,600만원, 직장인은 세금·건보료로 306만원 더",
+      "images": "20261106_2033",
+      "cover": "cream",
+      "reel_only": true
     }
   ],
   "reels": [
@@ -623,6 +632,17 @@
       "item": "20261106_jepq-dividend-calc",
       "title": "월급처럼 매달 받는 돈, 매달 똑같을까?",
       "media_id": "18123823924943758"
+    },
+    {
+      "at": "2026-11-06T20:33:53.106983+09:00",
+      "item": "slides_20261106_2033",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "이자 많이 받으면세금 폭탄?진짜일까",
+      "slot": "evening",
+      "title": "10억 예금 이자 세금 — 연 3,600만원, 직장인은 세금·건보료로 306만원 더",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18107660714203318"
     }
   ]
 }
