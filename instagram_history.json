@@ -30,7 +30,8 @@
     "https://ideas07576.tistory.com/351",
     "https://ideas07576.tistory.com/352",
     "https://ideas07576.tistory.com/353",
-    "https://ideas07576.tistory.com/354"
+    "https://ideas07576.tistory.com/354",
+    "https://ideas07576.tistory.com/357"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -278,6 +279,14 @@
       "images": "20261106_2033",
       "cover": "cream",
       "reel_only": true
+    },
+    {
+      "at": "2026-11-07T19:44:15.477755+09:00",
+      "link": "https://ideas07576.tistory.com/357",
+      "title": "환전 수수료 계산 — 1,000만원이면 은행 현찰 17만원, 증권사 95% 우대는 5천원",
+      "media_id": "18113302985618940",
+      "images": "20261107_1943",
+      "cover": "cream"
     }
   ],
   "reels": [
@@ -654,6 +663,17 @@
       "title": "테마 ETF 비중 몇 %가 적당할까 — 한 테마 5%, 합계 10% 규칙",
       "bgm": "bgm_01_morning_groove",
       "media_id": "18427099519152887"
+    },
+    {
+      "at": "2026-11-07T19:45:00.826405+09:00",
+      "item": "slides_20261107_1943",
+      "kind": "slides",
+      "hook": "card",
+      "hook_text": "같은 돈인데환전만 다르게 했더니30배 차이?",
+      "slot": "evening",
+      "title": "환전 수수료 계산 — 1,000만원이면 은행 현찰 17만원, 증권사 95% 우대는 5천원",
+      "bgm": "bgm_02_sunny_drive",
+      "media_id": "18138225193643161"
     }
   ]
 }
