@@ -855,6 +855,12 @@ def run_reel(h: dict):
     if not reel_slot_open(h, "영상 쇼츠 릴스"):
         return
     items = fetch_reels_queue()
+    # 2026-11-07: 영상 작업이 큐를 다시 올리며 이미 발행한 항목이 되살아나 같은 영상이 이틀 연속 나감 → 발행 기록에 있는 항목은 건너뜀
+    done = {x.get("item") for x in h.get("reels", []) if x.get("media_id")}
+    dup = [i for i in items if i.name in done]
+    if dup:
+        print(f"이미 발행한 대기열 항목 건너뜀: {[i.name for i in dup]}")
+    items = [i for i in items if i.name not in done]
     if not items:
         return
     item = items[0]
