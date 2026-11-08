@@ -4,12 +4,11 @@
     "link_mode": "off",
     "link_every_n": 5,
     "format_order": [
+      "opinion",
       "number",
       "routine",
-      "confession",
-      "number",
       "question",
-      "opinion"
+      "confession"
     ],
     "standalone_every_n": 6,
     "card_image": "always",
@@ -28,7 +27,7 @@
       "23": "standalone"
     },
     "_slots_설명": "2026-10-20: 하루 4개 슬롯별 글 종류. 발행 시각은 Claude 예약 작업 '스레드 정시 발행'(각 슬롯 :12 — 21시는 인스타 저녁 릴스 뒤)과 맞출 것. standalone_every_n 은 슬롯 방식에선 안 씀",
-    "_format_order_설명": "2026-11-02: number 2주 연속 글당 조회 1위(18.2→28.2)라 6칸 중 2칸, opinion 2주 연속 최하(9.0→10.8)라 1/5→1/6"
+    "_format_order_설명": "2026-11-08: number 2칸으로 늘린 주에 number 중앙값 16.5→7로 하락, opinion(통념 뒤집기 '…라고? 반대임')이 809 조회·중앙값 21로 1위 → 다섯 포맷 한 칸씩, opinion 을 통념 뒤집기형으로 다시 씀"
   },
   "instagram": {
     "cover_mode": "alternate",
