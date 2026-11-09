@@ -3,6 +3,7 @@ import html
 import json
 import re
 import time
+import random
 import subprocess
 import feedparser
 import anthropic
@@ -116,34 +117,92 @@ def fetch_rss() -> list:
     return posts
 
 
+# ── 말투·틀 (2026-11-10 사용자 결정: "그냥 공손하게") ─────────────────────
+# 10/11부터 쓴 반말·음슴체("~임/~함") + 매 글 양자택일 질문 끝맺음은 5주 동안 글당 조회 중앙값이
+# 제자리(10→3·3·7·14·9)였고, 질문은 46개 전부 붙었는데 답글은 글당 0.2개. 연달아 보면 자동 계정 티가 남.
+# → 공손한 해요체로 바꾸고, 끝 질문은 질문형 포맷에서만, 길이는 글마다 섞고, 1인칭 경험은 실제 방식만.
+VOICE_RULES = (
+    "- 말투는 공손한 해요체 ('~해요', '~더라고요', '~거든요', '~했어요'). 반말·음슴체('~임', '~함', '~음', '~더라', '~거든')는 한 문장도 쓰지 말 것\n"
+    "- 30대 남자 직장인이 차분하게 말하듯 담백하게. '~답니다', 물결(~), 느낌표 연발, 애교·과한 감탄, "
+    "'감사합니다'·'좋은 하루 되세요' 같은 인사 멘트, 홍보·광고 톤 금지\n"
+    "- 문장 끝이 '~요'로만 똑같이 이어지지 않게 '~거든요', '~더라고요', '~죠', '~습니다'를 자연스럽게 섞을 것\n"
+    "- 아래 '이미 올린 글'이 반말로 쓰여 있어도 그건 예전 말투라서 따라 하지 말 것"
+)
+
+EXPERIENCE_RULE = (
+    "- 1인칭 경험은 실제로 하는 방식(레버리지 ETF를 8개 계좌로 나눠 분할매수·분할매도, ETF 적립식 장기 계좌, "
+    "출퇴근길에 시장 확인)과 참고 글에 1인칭으로 나온 내용만 쓸 것. 그 밖의 과거 매매 사건·손실·감정"
+    "('계좌가 다 녹아 있었어요', '그때 멘탈이 나갔어요', '~를 기다렸어요')은 지어내지 말 것. "
+    "시장 상황은 '그때 주식·채권이 같이 빠졌어요'처럼 사실로만 쓰고 내 경험으로 바꾸지 말 것"
+)
+
+# 글 길이를 섞어서 매번 '훅 한 줄 + 3문장 + 질문' 같은 똑같은 모양이 되지 않게
+POST_SHAPES = [
+    ("짧게", "첫 줄 포함 1~2문장, 40~110자. 이유 한 문장이면 충분", 3),
+    ("보통", "3~4문장, 120~230자", 4),
+    ("길게", "5~7문장, 250~400자. 원리를 차근차근 풀어서", 3),
+]
+_rng = random.Random()  # 카드 렌더링이 전역 random 을 시드로 고정하므로 따로 씀
+
+
+def pick_shape() -> tuple:
+    name, rule, _ = _rng.choices(POST_SHAPES, weights=[w for *_, w in POST_SHAPES])[0]
+    return name, rule
+
+
+def ending_rule(ask: bool) -> str:
+    if ask:
+        return ("- 마지막 줄은 3초 안에 답할 수 있는 질문 한 문장을 공손하게 "
+                "(예: '환헤지 붙은 거랑 안 붙은 거, 어느 쪽 사세요?', '손절 기준 정해두셨어요?'). "
+                "'여러분은 어떠세요?' 같은 막연한 질문 금지")
+    return ("- 질문으로 끝내지 말 것 ('~하세요?', '어떠세요?', '~하시나요?' 같은 문장 금지). "
+            "마지막 문장은 결론 한 줄이나 내가 실제로 하는 방식 한 줄처럼, 직전 글들과 다른 방식으로 자연스럽게 끝낼 것")
+
+
+def drop_trailing_question(text: str) -> str:
+    """질문 없이 끝내야 하는 글인데 마지막 줄이 질문이면 그 줄만 뺌 (해시태그 줄은 유지)."""
+    lines = text.strip().split("\n")
+    tags = []
+    while lines and (not lines[-1].strip() or lines[-1].strip().startswith("#")):
+        tags.insert(0, lines.pop())
+    body = [l for l in lines if l.strip()]
+    if len(body) >= 2 and body[-1].strip().endswith("?"):
+        idx = max(i for i, l in enumerate(lines) if l.strip())
+        lines = lines[:idx]
+    out = "\n".join(lines).rstrip()
+    tag_text = "\n".join(t for t in tags if t.strip())
+    return f"{out}\n\n{tag_text}" if tag_text else out
+
+
 # 스레드 전용 포맷 — 발행할 때마다 돌아가며 사용 (같은 틀의 글이 연달아 나가지 않게)
+# 끝 질문은 question 포맷에서만 (format_order 5칸 중 1칸 → 대략 5개 중 1개)
 POST_FORMATS = {
     "opinion": (
         "통념 뒤집기형",
-        "첫 줄에 초보들이 흔히 믿는 말을 그대로 던지고 바로 뒤집기(예: '레버리지 ETF 오래 들고 있으면 복리로 불어난다고? 반대임'). "
-        "왜 반대인지 구조적인 이유·원문 사실 2~3문장으로 쉽게(지어낸 경험담 말고 원리로). "
-        "마지막은 '알고 있었음 vs 처음 앎?'처럼 한 단어로 답할 수 있는 질문.",
+        "첫 줄에 초보들이 흔히 믿는 말을 던지고 바로 뒤집기(예: '레버리지 ETF 오래 들고 있으면 복리로 불어난다고요? 오히려 반대예요'). "
+        "왜 반대인지 구조적인 이유·원문 사실로 쉽게(지어낸 경험담 말고 원리로). "
+        "첫 줄 표현은 직전 글들과 겹치지 않게 바꿀 것 ('~라고요? 반대예요'만 반복하지 말고 '~라는 말, 절반만 맞아요', "
+        "'~는 생각보다 위험해요', '~해도 괜찮다는 건 오해예요' 등).",
     ),
     "question": (
         "질문형",
-        "첫 줄부터 독자에게 고르게 만드는 질문(A vs B, 너라면?). 내 선택과 이유를 2~3문장으로 밝히고, "
-        "다시 독자의 선택을 묻는 한 문장으로 마무리.",
+        "첫 줄부터 독자에게 고르게 만드는 질문(예: 'A랑 B 중에 어느 쪽이세요?'). 내 선택과 이유를 밝히고, "
+        "독자의 선택을 묻는 한 문장으로 마무리.",
     ),
     "confession": (
-        "오해·고백형",
-        "'예전엔 ~인 줄 알았음'처럼 내가 잘못 알고 있던 생각을 1인칭으로 고백하며 시작. 뭘 잘못 알았고 실제로는 어떤지 2~3문장. "
-        "손해 본 금액·날짜·매매 사건 같은 구체적 에피소드는 지어내지 말고 '생각이 바뀐 것'만. "
-        "마지막은 '나만 그랬음? 있다/없다로만 답해줘'처럼 바로 답할 수 있는 질문.",
+        "생각이 바뀐 것형",
+        "'예전엔 ~인 줄 알았어요'처럼 내가 잘못 알고 있던 생각으로 시작. 뭘 잘못 알았고 실제로는 어떤지. "
+        "손해 본 금액·날짜·매매 사건 같은 구체적 에피소드는 지어내지 말고 '생각이 바뀐 것'만.",
     ),
     "number": (
         "숫자 하나형",
-        "글에 실제로 나오는 숫자 하나를 첫 줄에 크게(예: '3년 방치하면 800만원 차이'). 그 숫자가 왜 중요한지 "
-        "내 생각 2~3문장. 마지막은 짧은 질문. 숫자는 절대 지어내지 말고 글에 없으면 의견형처럼 쓸 것.",
+        "글에 실제로 나오는 숫자 하나를 첫 줄에 크게(예: '3년 방치하면 800만원 차이예요'). 그 숫자가 왜 중요한지 "
+        "내 생각. 숫자는 절대 지어내지 말고 글에 없으면 의견형처럼 쓸 것.",
     ),
     "routine": (
-        "내 루틴형",
-        "'직장인인 나는 이렇게 한다'는 실제 행동 위주로. 출근길·점심·퇴근 후 같은 직장인 상황을 넣어 2~4문장. "
-        "마지막은 '출근길 vs 점심 vs 퇴근 후, 너는?'처럼 골라서 답하는 질문.",
+        "내 방식형",
+        "직장인인 내가 실제로 하는 방식 위주(8개 계좌 분할매매, 매달 같은 날 적립, 출퇴근길 시장 확인 중 글에 맞는 것). "
+        "그 방식을 왜 쓰는지 이유와 함께. 실제로 안 하는 습관을 지어내지 말 것.",
     ),
 }
 FORMAT_ORDER = [f for f in _CFG.get("format_order", []) if f in POST_FORMATS] or \
@@ -154,9 +213,9 @@ RISKY_FINANCE_WORDS = ("수익 보장", "원금 보장", "무조건 오", "무�
 
 
 PERSONA = (
-    "너는 'WhiteCoffee'야. 회사 다니면서 재테크하는 30대 직장인이고, 출퇴근 광역버스에서 시장을 확인함. "
-    "'주식농사'라는 이름으로 투자를 농사처럼 길게 봄. 단기로는 레버리지 ETF를 8개 계좌로 나눠 "
-    "분할매수·분할매도하고, 장기로는 ETF 적립식 포트폴리오를 굴림."
+    "너는 'WhiteCoffee'야. 회사 다니면서 재테크하는 30대 남자 직장인이고, 출퇴근 광역버스에서 시장을 확인해. "
+    "'주식농사'라는 이름으로 투자를 농사처럼 길게 봐. 단기로는 레버리지 ETF를 8개 계좌로 나눠 "
+    "분할매수·분할매도하고, 장기로는 ETF 적립식 포트폴리오를 굴려. 스레드에는 공손한 해요체로 써."
 )
 
 # 블로그와 무관한 스레드 전용 소재 — 같은 사람이 같은 주제로 말하되, 링크·원문 없이 완결
@@ -168,7 +227,7 @@ STANDALONE_TOPICS = [
     ("현금 비중", "늘 현금을 일부 남겨두는 이유"),
     ("매도", "사는 것보다 파는 게 어려운 이유, 나눠 파는 습관"),
     ("적립식", "매달 같은 날 기계적으로 사는 장기 계좌 이야기"),
-    ("실수", "초보 때 했던 투자 실수 하나와 지금 바뀐 습관"),
+    ("실수", "초보들이 흔히 하는 투자 실수 하나와, 그걸 피하려고 내가 정해둔 원칙"),
     ("직장인 vs 전업", "직장인이라서 오히려 유리한 투자 방식"),
     ("시장 소음", "뉴스·유튜브 전망을 얼마나 믿는지"),
     ("목표", "투자로 이루고 싶은 현실적인 목표와 숫자보다 중요한 것"),
@@ -202,9 +261,11 @@ def should_post_standalone(recent_posts: list) -> bool:
 def generate_standalone_post(recent_posts: list, fmt: str, topic: tuple) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     fmt_name, fmt_rule = POST_FORMATS[fmt]
+    shape_name, shape_rule = pick_shape()
+    ask = fmt == "question" or topic[0] == "질문"
     latest = "\n---\n".join(r["text"] for r in recent_posts[-6:])
     prompt = f"""{PERSONA}
-오늘은 블로그 글 없이, 스레드에만 올리는 짧은 혼잣말 같은 글을 써줘.
+오늘은 블로그 글 없이, 스레드에만 올리는 짧은 글을 써줘.
 
 [주제] {topic[0]} — {topic[1]}
 
@@ -214,15 +275,17 @@ def generate_standalone_post(recent_posts: list, fmt: str, topic: tuple) -> str:
 [이번 포맷: {fmt_name}]
 {fmt_rule}
 
+[이번 길이: {shape_name}]
+{shape_rule}
+
 [작성 규칙]
-- 1인칭 반말 구어체 ("~임", "~더라", "~함" OK). 친구한테 말하듯. 존댓말·홍보 톤 금지
-- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황을 1인칭으로 던질 것 (예: '~하려던 사람 나야 나', '~샀는데 왜 마이너스지?', '~해야 하는 거 아냐?'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
-- 같은 틀 반복 금지: 위에 이미 올린 글에 나온 문장 틀('~한 사람 나야 나', 'A vs B, 너는?' 등)·소재(광역버스, 출근길/퇴근 후, 점심시간, 8개 계좌)는 이번 글에 쓰지 말 것. 첫 줄 시작 방식도 직전 글들과 다르게
-- 전체 80~220자. 짧을수록 좋음
-- 마지막 줄은 한 단어·숫자·A/B 중 하나로 3초 안에 답할 수 있는 질문 한 문장 (예: 'H 붙은 거 vs 안 붙은 거, 너는?', '손절 기준 있음 없음?'). '너넨 어때?' 같은 막연한 질문 금지
+{VOICE_RULES}
+- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황이나 흔한 생각을 던질 것 (예: '~샀는데 왜 마이너스일까요?', '~부터 해야 하는 거 아닌가요?', '~라는 말, 절반만 맞아요'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
+- 같은 틀 반복 금지: 위에 이미 올린 글에 나온 문장 틀('~라고요? 반대예요', 'A vs B, 어느 쪽이세요?' 등)·소재(광역버스, 출근길/퇴근 후, 점심시간, 8개 계좌)는 이번 글에 쓰지 말 것. 첫 줄 시작 방식도 직전 글들과 다르게
+{ending_rule(ask)}
 - 이모지는 0~1개, 해시태그는 맨 끝에 딱 1개 (#재테크 #주식 #직장인투자 #ETF 중)
-- 구체적인 수익률·금액·날짜·종목 매매 결과는 지어내지 말 것 (생각·습관·태도 위주)
-- '예전에 올인했다가 더 빠졌다', '그때 멘탈 나갔다' 같은 구체적인 과거 매매 사건·손실 경험담을 지어내지 말 것. 경험이 필요하면 '초보 때 흔히 ~하는데'처럼 일반화하거나 지금의 원칙·습관으로 쓸 것
+- 구체적인 수익률·금액·날짜·종목 매매 결과는 지어내지 말 것 (생각·원칙·태도 위주)
+{EXPERIENCE_RULE}
 - 특정 종목을 사라/팔라고 권하거나 수익을 장담하는 표현 금지
 - 숫자 하나형 포맷이면 실제 데이터 대신 '8개 계좌', '매달 같은 날'처럼 내 방식에 이미 있는 숫자만 사용
 
@@ -232,10 +295,12 @@ def generate_standalone_post(recent_posts: list, fmt: str, topic: tuple) -> str:
 본문만 출력해. 다른 말 없이."""
     msg = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=500,
+        max_tokens=700,
         messages=[{"role": "user", "content": prompt}],
     )
     text = remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))
+    if not ask:
+        text = drop_trailing_question(text)
     return text[:490]
 
 
@@ -268,6 +333,8 @@ def pick_format(recent_posts: list) -> str:
 def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     fmt_name, fmt_rule = POST_FORMATS[fmt]
+    shape_name, shape_rule = pick_shape()
+    ask = fmt == "question"
 
     # 같은 원문으로 예전에 쓴 글 + 최근 발행문 → 같은 각도·같은 첫 문장 반복 금지
     same_link = [r["text"] for r in recent_posts if r.get("link") == post["link"]][-3:]
@@ -294,31 +361,36 @@ def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
 [이번 포맷: {fmt_name}]
 {fmt_rule}
 
+[이번 길이: {shape_name}]
+{shape_rule}
+
 [작성 규칙]
 - 원문 내용을 요약하지 말고, 그중 핵심 포인트 '딱 하나'만 골라서 쓸 것
-- 1인칭 반말 구어체 ("~임", "~더라", "~함" OK). 친구한테 말하듯. 존댓말·홍보 톤 금지
-- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황을 1인칭으로 던질 것 (예: '~하려던 사람 나야 나', '~샀는데 왜 마이너스지?', '~해야 하는 거 아냐?'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
-- 같은 틀 반복 금지: 위에 이미 올린 글에 나온 문장 틀('~한 사람 나야 나', 'A vs B, 너는?' 등)·소재(광역버스, 출근길/퇴근 후, 점심시간, 8개 계좌)는 이번 글에 쓰지 말 것. 첫 줄 시작 방식도 직전 글들과 다르게
-- 전체 100~250자 (띄어쓰기 포함). 짧을수록 좋음
-- 마지막 줄은 한 단어·숫자·A/B 중 하나로 3초 안에 답할 수 있는 질문 한 문장 (예: 'H 붙은 거 vs 안 붙은 거, 너는?', '손절 기준 있음 없음?'). '너넨 어때?' 같은 막연한 질문 금지
+{VOICE_RULES}
+- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황이나 흔한 생각을 던질 것 (예: '~샀는데 왜 마이너스일까요?', '~부터 해야 하는 거 아닌가요?', '~라는 말, 절반만 맞아요'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
+- 같은 틀 반복 금지: 위에 이미 올린 글에 나온 문장 틀('~라고요? 반대예요', 'A vs B, 어느 쪽이세요?' 등)·소재(광역버스, 출근길/퇴근 후, 점심시간, 8개 계좌)는 이번 글에 쓰지 말 것. 첫 줄 시작 방식도 직전 글들과 다르게
+{ending_rule(ask)}
 - 이모지는 0~1개
 - 해시태그는 맨 끝에 딱 1개만 (#재테크 #주식 #직장인투자 #ETF 중 글에 맞는 것)
 - 원문에 없는 숫자·사실은 지어내지 말 것
+{EXPERIENCE_RULE}
 - 특정 종목을 사라/팔라고 권하거나 수익을 장담하는 표현 금지
 
 [절대 금지]
 - URL, "링크", "프로필", "댓글", "블로그" 같은 단어
-- "정리해봤어", "올려뒀어", "확인해봐", "궁금하면" 같은 유도 문구
+- "정리해봤어요", "올려뒀어요", "확인해보세요", "궁금하면" 같은 유도 문구
 
 본문만 출력해. 다른 말 없이."""
 
     msg = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=500,
+        max_tokens=700,
         messages=[{"role": "user", "content": prompt}]
     )
 
     text = remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))
+    if not ask:
+        text = drop_trailing_question(text)
     if len(text) > 490:
         text = text[:490]
     return text
@@ -368,6 +440,7 @@ def generate_card_hook(post: dict) -> str:
 - 반드시 한 문장, 25자 이내 (띄어쓰기 포함)
 - 이모지 포함, 해시태그, 따옴표 없이 텍스트만
 - 궁금증이나 공감을 유발하는 임팩트 있는 문구
+- 반말·음슴체('~임', '~함', '~했음') 금지. 명사형으로 끝내거나 공손한 해요체로
 - 광고 카피처럼 과장하지 말 것
 
 문구만 출력해줘. 다른 말 없이."""
@@ -444,7 +517,7 @@ def extract_visual_content(post: dict) -> dict | None:
   (bar/line/donut에서 이 경우 is_approx를 true로). stat/table/process는 텍스트 그대로 요약하면 되므로
   is_approx가 필요 없음.
 - 후보가 여러 개 가능하면 가장 읽는 사람이 이해하기 쉽고 글의 핵심을 잘 담는 것 하나만 선택해.
-- hook은 카드 제목 역할, 25자 이내, 이모지 1개 포함.
+- hook은 카드 제목 역할, 25자 이내, 이모지 1개 포함. 반말·음슴체('~임', '~함') 말고 명사형이나 해요체로.
 - stat_value는 "800만원", "3배", "1위"처럼 단위까지 포함한 문자열로.
 - table_rows는 2~5개, table_columns는 정확히 2개.
 - process_steps는 3~5개, 각 title은 10자 이내, desc는 20자 이내, emoji는 단계 내용에 맞는 것 1개.
@@ -1652,6 +1725,7 @@ def pick_recycle(data: dict) -> dict | None:
 def generate_recycle_post(src: dict, src_text: str, recent_posts: list) -> str:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     angle = RECYCLE_ANGLES[src.get("_n", 0) % len(RECYCLE_ANGLES)]
+    shape_name, shape_rule = pick_shape()
     latest = "\n---\n".join(r["text"] for r in recent_posts[-6:])
     prompt = f"""{PERSONA}
 예전에 스레드에 올린 아래 글이 반응이 좋았어. 같은 핵심 주제로, 각도를 바꾼 새 글을 써줘.
@@ -1665,23 +1739,28 @@ def generate_recycle_post(src: dict, src_text: str, recent_posts: list) -> str:
 [이미 올린 글들 — 첫 문장·주장·표현이 겹치면 안 됨]
 {latest}
 
+[이번 길이: {shape_name}]
+{shape_rule}
+
 [작성 규칙]
 - 원글의 첫 문장·문장을 그대로 쓰지 말 것. 원글을 안 본 사람도 이 글만으로 이해돼야 함
-- 1인칭 반말 구어체 ("~임", "~더라", "~함" OK). 친구한테 말하듯. 존댓말·홍보 톤 금지
+{VOICE_RULES}
+- 원글이 반말이어도 이번 글은 해요체로 쓸 것
 - 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈
-- 전체 80~220자. 짧을수록 좋음
-- 마지막 줄은 한 단어·A/B 중 하나로 3초 안에 답할 수 있는 질문 한 문장
+{ending_rule(False)}
 - 이모지는 0~1개, 해시태그는 맨 끝에 딱 1개 (#재테크 #주식 #직장인투자 #ETF 중)
-- 원글에 없는 구체적인 수익률·금액·날짜·매매 결과는 지어내지 말 것. 과거 매매 사건·손실 경험담도 지어내지 말 것
+- 원글에 없는 구체적인 수익률·금액·날짜·매매 결과는 지어내지 말 것
+{EXPERIENCE_RULE}
 - 특정 종목을 사라/팔라고 권하거나 수익을 장담하는 표현 금지
 
 [절대 금지]
 - URL, "링크", "프로필", "댓글", "블로그", "예전에 올린 글", "지난번 글" 같은 말
 
 본문만 출력해. 다른 말 없이."""
-    msg = client.messages.create(model="claude-opus-4-5", max_tokens=500,
+    msg = client.messages.create(model="claude-opus-4-5", max_tokens=700,
                                  messages=[{"role": "user", "content": prompt}])
-    return remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))[:490]
+    text = remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))
+    return drop_trailing_question(text)[:490]
 
 
 def publish_recycle_slot(data: dict) -> bool:
