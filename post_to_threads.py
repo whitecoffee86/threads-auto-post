@@ -57,14 +57,14 @@ THREADS_USER_ID   = os.environ["THREADS_USER_ID"]
 THREADS_TOKEN     = os.environ["THREADS_ACCESS_TOKEN"]
 # 테스트: 컨테이너 생성·처리까지만 하고 게시·기록은 안 함 (auto_post.yml 수동 실행 dry_run)
 DRY_RUN           = os.environ.get("THREADS_DRY_RUN") == "1"
-# 테스트: 지금 시각과 무관하게 이 슬롯 종류로 실행 (carousel/blog/video/standalone)
+# 테스트: 지금 시각과 무관하게 이 슬롯 종류로 실행 (carousel/blog/video/standalone/recycle)
 FORCE_KIND        = os.environ.get("THREADS_FORCE_KIND", "").strip()
 # ─────────────────────────────────────────────────
 
 KST = timezone(timedelta(hours=9))
 
 
-RECENT_POSTS_KEEP = 40  # 반복 방지용으로 기억할 최근 발행문 개수
+RECENT_POSTS_KEEP = 120  # 반복 방지용으로 기억할 최근 발행문 개수
 
 
 def load_data() -> dict:
@@ -77,9 +77,10 @@ def load_data() -> dict:
                 "recent_posts": data.get("recent_posts", []),
                 "threads_carousels": data.get("threads_carousels", []),  # 스레드에 올린 인스타 장표 묶음(stamp)
                 "threads_videos": data.get("threads_videos", []),        # 스레드에 올린 영상 id
+                "recycled": data.get("recycled", []),                    # 재활용한 원글 [{id, at}]
             }
     return {"cycle_published": set(), "short_term_done": set(), "recent_posts": [],
-            "threads_carousels": [], "threads_videos": []}
+            "threads_carousels": [], "threads_videos": [], "recycled": []}
 
 
 def save_data(data: dict):
@@ -90,6 +91,7 @@ def save_data(data: dict):
             "recent_posts": data.get("recent_posts", [])[-RECENT_POSTS_KEEP:],
             "threads_carousels": data.get("threads_carousels", [])[-60:],
             "threads_videos": data.get("threads_videos", [])[-60:],
+            "recycled": data.get("recycled", [])[-100:],
         }, f, ensure_ascii=False, indent=2)
 
 
@@ -171,6 +173,15 @@ STANDALONE_TOPICS = [
     ("시장 소음", "뉴스·유튜브 전망을 얼마나 믿는지"),
     ("목표", "투자로 이루고 싶은 현실적인 목표와 숫자보다 중요한 것"),
     ("질문", "팔로워에게 묻고 싶은 투자 습관 질문 하나 (예: 손절 기준 있는지)"),
+    # 2026-11-09: '…라고? 반대임' 통념 뒤집기 글(레버리지 장기 보유)이 809 조회 → 초보가 흔히 믿는 말 소재 추가
+    ("배당 오해", "배당 많이 주는 ETF가 무조건 좋은 거라는 생각"),
+    ("물타기 오해", "떨어질 때 물타면 평단이 낮아져서 무조건 유리하다는 생각"),
+    ("예금 오해", "예금은 손해 볼 일이 전혀 없다는 생각(물가·세금)"),
+    ("분산 오해", "ETF 여러 개 사면 저절로 분산된다는 생각(겹치는 종목)"),
+    ("수수료 오해", "보수 0.1% 차이는 신경 쓸 필요 없다는 생각(긴 기간 복리)"),
+    ("환율 오해", "미국 ETF는 환율 상관없이 지수만 보면 된다는 생각"),
+    ("적립 오해", "적립식은 시장이 오를 때만 의미 있다는 생각"),
+    ("고점 오해", "지수가 신고가면 이제 늦었다는 생각"),
 ]
 
 
@@ -1368,7 +1379,7 @@ def publish_standalone(data: dict) -> bool:
 
 
 # ── 슬롯별 발행 (2026-10-20) ─────────────────────────
-# 발행 시계는 Claude 예약 작업 '스레드 정시 발행' 하나(12:12·18:12·21:12·23:12 KST).
+# 발행 시계는 Claude 예약 작업 '스레드 정시 발행' 하나(각 슬롯 :12 KST, 2026-11-09부터 하루 8개).
 # GitHub 자체 예약은 몇 시간씩 늦게 도착해 엉뚱한 시각에 글을 내보내서 auto_post.yml 에서 뺐다.
 # 슬롯마다 글 종류를 정해 하루 4개가 서로 다른 모양으로 나가게 한다.
 SLOT_HOURS = tuple(int(h) for h in _CFG.get("slots", [12, 18, 21, 23]))
@@ -1578,6 +1589,131 @@ def publish_blog_slot(data: dict, today) -> bool:
     return False
 
 
+# ── 반응 터진 글 재활용 (2026-11-09 사용자 결정: 하루 8개 + 재활용) ─────────────
+# 벤치마크(스레드 1만 명 사례): 반응 좋은 짧은 글을 다른 각도로 계속 다시 써서 같은 주제로 노출을 쌓음.
+# threads_stats.json·daily_threads_stats.json 에서 조회가 최근 중앙값의 3배(최소 40) 넘는 글을 골라
+# 2일 뒤부터, 같은 원글은 4일 간격으로 최대 3번까지 다른 각도로 새로 쓴다(같은 첫 문장·문장 금지).
+RECYCLE_ANGLES = [
+    "그 오해를 하게 되는 흔한 상황 하나를 먼저 보여 주고(지어낸 내 경험담 말고 '보통 이럴 때'), 왜 아닌지 원리 한 가지로",
+    "원글의 핵심 원리 하나를 숫자 없이 아주 쉬운 비유 하나로 다시 설명",
+    "원글을 본 사람이 이어서 궁금해할 다음 질문 하나를 첫 줄에 던지고 답하기",
+]
+
+
+def _stats_posts() -> list:
+    out = {}
+    for f in ("threads_stats.json", "daily_threads_stats.json"):
+        try:
+            snaps = json.loads(Path(f).read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for snap in snaps:
+            for p in snap.get("posts", []):
+                if p.get("id") and p.get("views", 0) >= out.get(p["id"], {}).get("views", -1):
+                    out[p["id"]] = p
+    return list(out.values())
+
+
+def pick_recycle(data: dict) -> dict | None:
+    now = datetime.now(KST)
+    posts = []
+    for p in _stats_posts():
+        try:
+            at = datetime.fromisoformat(p["at"])
+        except Exception:
+            continue
+        p["_at"] = at if at.tzinfo else at.replace(tzinfo=KST)
+        posts.append(p)
+    recent = [p["views"] for p in posts if p["_at"] > now - timedelta(days=14)]
+    if not recent:
+        return None
+    med = sorted(recent)[len(recent) // 2]
+    bar = max(40, med * 3)
+    done = data.get("recycled", [])
+    best = None
+    for p in posts:
+        if p.get("kind", "").startswith("recycle"):
+            continue
+        if not (now - timedelta(days=30) <= p["_at"] <= now - timedelta(days=2)) or p["views"] < bar:
+            continue
+        mine = [r for r in done if r.get("id") == p["id"]]
+        if len(mine) >= len(RECYCLE_ANGLES):
+            continue
+        if mine and max(datetime.fromisoformat(r["at"]) for r in mine) > now - timedelta(days=4):
+            continue
+        if best is None or p["views"] > best["views"]:
+            best = p
+    if best:
+        best["_n"] = sum(1 for r in done if r.get("id") == best["id"])
+        print(f"재활용 원글: {best['first_line']} (조회 {best['views']}, 기준 {bar}, {best['_n'] + 1}번째)")
+    return best
+
+
+def generate_recycle_post(src: dict, src_text: str, recent_posts: list) -> str:
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    angle = RECYCLE_ANGLES[src.get("_n", 0) % len(RECYCLE_ANGLES)]
+    latest = "\n---\n".join(r["text"] for r in recent_posts[-6:])
+    prompt = f"""{PERSONA}
+예전에 스레드에 올린 아래 글이 반응이 좋았어. 같은 핵심 주제로, 각도를 바꾼 새 글을 써줘.
+
+[반응 좋았던 원글]
+{src_text}
+
+[이번 각도]
+{angle}
+
+[이미 올린 글들 — 첫 문장·주장·표현이 겹치면 안 됨]
+{latest}
+
+[작성 규칙]
+- 원글의 첫 문장·문장을 그대로 쓰지 말 것. 원글을 안 본 사람도 이 글만으로 이해돼야 함
+- 1인칭 반말 구어체 ("~임", "~더라", "~함" OK). 친구한테 말하듯. 존댓말·홍보 톤 금지
+- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈
+- 전체 80~220자. 짧을수록 좋음
+- 마지막 줄은 한 단어·A/B 중 하나로 3초 안에 답할 수 있는 질문 한 문장
+- 이모지는 0~1개, 해시태그는 맨 끝에 딱 1개 (#재테크 #주식 #직장인투자 #ETF 중)
+- 원글에 없는 구체적인 수익률·금액·날짜·매매 결과는 지어내지 말 것. 과거 매매 사건·손실 경험담도 지어내지 말 것
+- 특정 종목을 사라/팔라고 권하거나 수익을 장담하는 표현 금지
+
+[절대 금지]
+- URL, "링크", "프로필", "댓글", "블로그", "예전에 올린 글", "지난번 글" 같은 말
+
+본문만 출력해. 다른 말 없이."""
+    msg = client.messages.create(model="claude-opus-4-5", max_tokens=500,
+                                 messages=[{"role": "user", "content": prompt}])
+    return remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))[:490]
+
+
+def publish_recycle_slot(data: dict) -> bool:
+    try:
+        src = pick_recycle(data)
+        if not src:
+            print("재활용할 만큼 반응 터진 글 없음")
+            return False
+        recent = data.get("recent_posts", [])
+        first = src.get("first_line", "").strip()
+        orig = next((r for r in reversed(recent) if r.get("text", "").strip().startswith(first[:20])), None)
+        src_text = orig["text"] if orig else first
+        text = generate_recycle_post(src, src_text, recent)
+        print(f"재활용 글:\n{text}\n")
+        if not text:
+            return False
+        label = (orig or {}).get("topic") or "재테크"
+        image_url = make_standalone_image_url(text, label) if want_card_image(recent) else None
+        if not post_to_threads(text, image_url=image_url):
+            return False
+        print("발행 완료: 재활용 글")
+        if not DRY_RUN:
+            data.setdefault("recycled", []).append({"id": src["id"], "at": datetime.now(KST).isoformat()})
+        _record(data, {"kind": "recycle", "topic": label, "format": (orig or {}).get("format", ""),
+                       "src_id": src["id"], "text": text, "linked": False, "image": bool(image_url),
+                       "link": (orig or {}).get("link", "")})
+        return True
+    except Exception as e:
+        print(f"재활용 오류: {e}")
+        return False
+
+
 def main():
     data = load_data()
     if late_schedule_guard(data):
@@ -1594,6 +1730,8 @@ def main():
         ok = publish_video_slot(data)
     elif kind == "standalone":
         ok = publish_standalone(data)
+    elif kind == "recycle":
+        ok = publish_recycle_slot(data)
     if not ok:  # 재료가 없거나 실패하면 블로그 카드 글로 대신
         if kind != "blog":
             print(f"{kind} 대신 블로그 카드 글로 발행")

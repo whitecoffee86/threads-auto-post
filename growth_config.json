@@ -12,27 +12,37 @@
     ],
     "standalone_every_n": 6,
     "card_image": "always",
-    "daily_max_posts": 4,
+    "daily_max_posts": 8,
     "min_gap_hours": 1.5,
     "slots": [
+      7,
+      9,
       12,
+      14,
+      16,
       18,
       21,
       23
     ],
     "slot_kinds": {
+      "7": "blog",
+      "9": "standalone",
       "12": "carousel",
+      "14": "recycle",
+      "16": "blog",
       "18": "blog",
       "21": "video",
       "23": "standalone"
     },
-    "_slots_설명": "2026-10-20: 하루 4개 슬롯별 글 종류. 발행 시각은 Claude 예약 작업 '스레드 정시 발행'(각 슬롯 :12 — 21시는 인스타 저녁 릴스 뒤)과 맞출 것. standalone_every_n 은 슬롯 방식에선 안 씀",
+    "_slots_설명": "2026-11-09(사용자와 함께): 하루 4→8개. 벤치마크(스레드 1만 명 사례: 하루 10~15개, 반응 좋은 글을 다른 각도로 재활용). 발행 시각은 Claude 예약 작업 '스레드 정시 발행'(각 슬롯 :12)과 맞출 것. 14시 recycle = 반응 터진 글 다른 각도로 재작성(없으면 블로그 카드). 2주(11/23까지) 유지 후 비교",
     "_format_order_설명": "2026-11-08: number 2칸으로 늘린 주에 number 중앙값 16.5→7로 하락, opinion(통념 뒤집기 '…라고? 반대임')이 809 조회·중앙값 21로 1위 → 다섯 포맷 한 칸씩, opinion 을 통념 뒤집기형으로 다시 씀"
   },
   "instagram": {
     "cover_mode": "alternate",
     "reader": "투자를 막 시작한 2030 직장인(성별 무관). 주식 앱을 깔고 ETF를 몇 개 사봤거나, 적금만 하다 이제 투자를 해보려는 사람. 월급·적금·카드값은 익숙하지만 세금·금리·ETF 구조 같은 용어는 아직 낯설다.",
-    "feed_mode": "alternate",
-    "reels_per_day": 2
+    "feed_mode": "off",
+    "reels_per_day": 2,
+    "slide_reels": false,
+    "_설명": "2026-11-09(사용자와 함께): 정보 장표(피드 캐러셀 6주 도달 0, 슬라이드 릴스 시청 1.7초) 중단 → 쿼카 상황극 릴스(예약 작업 '쿼카 상황극 릴스') + 유튜브 쇼츠 사본만. feed_mode off 여도 장표는 매일 저녁 하나 렌더해 스레드 12시 캐러셀 재료로만 씀(인스타엔 안 올림)"
   }
 }

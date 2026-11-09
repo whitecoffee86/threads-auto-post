@@ -57,6 +57,9 @@ FEED_MODE = _CFG.get("feed_mode", "daily")
 # 릴스 하루 최대 개수와 최소 간격. 10/19: 1 → 2 (점심 12시대 + 저녁 9시대). 릴스는 개당 도달이 일정(~120)해
 # 개수만큼 노출이 늘고, 첫 화면(질문형/숫자형) 비교 표본도 빨리 쌓인다.
 REELS_PER_DAY = int(_CFG.get("reels_per_day", 1))
+# 2026-11-09(사용자와 함께): 슬라이드 릴스(시청 1.7초)·피드 캐러셀(6주 도달 0) 중단. feed_mode "off" + slide_reels false 면
+# 릴스는 대기열(쿼카 상황극·유튜브 쇼츠 사본)만 올리고, 장표는 스레드 12시 캐러셀 재료로만 매일 저녁 하나 렌더한다.
+SLIDE_REELS = bool(_CFG.get("slide_reels", True))
 REEL_MIN_GAP_H = 6
 KST = timezone(timedelta(hours=9))
 
@@ -1050,7 +1053,11 @@ def reel_selftest():
 
 def is_feed_day(h: dict) -> bool:
     """feed_mode=alternate 면 직전 피드 캐러셀이 어제(KST)였던 날은 릴스만 올린다."""
-    if FEED_MODE != "alternate" or FORCE_URL:
+    if FORCE_URL:
+        return True
+    if FEED_MODE == "off":
+        return False
+    if FEED_MODE != "alternate":
         return True
     last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
     if not last:
@@ -1082,6 +1089,8 @@ def run_noon(h: dict):
     if not reel_slot_open(h, "점심 릴스"):
         return
     run_reel(h)
+    if not SLIDE_REELS:
+        return
     h = load_history()
     if not reel_slot_open(h, "점심 슬라이드 릴스"):
         return
@@ -1123,14 +1132,21 @@ def main():
         except Exception as e:
             print(f"릴스 실패: {e}")
             errors.append(e)
-        if not feed:
+        if not SLIDE_REELS:
+            try:
+                render_threads_only(load_history())
+            except Exception as e:
+                print(f"스레드용 장표 실패: {e}")
+                errors.append(e)
+        elif not feed:
             try:  # 피드를 쉬는 날: 장표만 만들어 슬라이드 릴스로 (영상 쇼츠가 이미 나갔으면 run_carousel 이 건너뜀)
                 carousel = run_carousel(load_history(), feed=False)
             except Exception as e:
                 print(f"릴스용 장표 실패: {e}")
                 errors.append(e)
         try:  # 영상 쇼츠가 없던 날은 오늘 캐러셀을 슬라이드 릴스로도 올린다
-            run_slide_reel(load_history(), carousel)
+            if SLIDE_REELS:
+                run_slide_reel(load_history(), carousel)
         except Exception as e:
             print(f"슬라이드 릴스 실패: {e}")
             errors.append(e)
@@ -1138,8 +1154,28 @@ def main():
         raise RuntimeError(f"{len(errors)}개 단계 실패")
 
 
-def run_carousel(h: dict, feed: bool = True):
-    if not feed:
+def render_threads_only(h: dict):
+    """인스타엔 안 올리고 스레드 12시 캐러셀 재료로만 장표 하나 렌더(하루 한 번)."""
+    for x in reversed(h.get("log", [])):
+        if x.get("threads_only"):
+            if datetime.fromisoformat(x["at"]) > datetime.now(KST) - timedelta(hours=20) and not DRY_RUN:
+                print(f"스레드용 장표: 20시간 안에 이미 만듦({x['at']}) — 건너뜀")
+                return
+            break
+    c = run_carousel(h, feed=False, check_slot=False)
+    if not c or DRY_RUN:
+        return
+    push_images(c["paths"])
+    h = load_history()
+    h.setdefault("posted", []).append(c["link"])
+    h.setdefault("log", []).append({"at": datetime.now(KST).isoformat(), "link": c["link"], "title": c["title"],
+                                    "images": c["stamp"], "cover": c["cover"], "threads_only": True})
+    save_history(h)
+    print(f"스레드용 장표 저장: {c['stamp']} {c['title']}")
+
+
+def run_carousel(h: dict, feed: bool = True, check_slot: bool = True):
+    if not feed and check_slot:
         if not reel_slot_open(h, "릴스용 장표"):
             return
     last = next((x for x in reversed(h.get("log", [])) if x.get("media_id")), None)
