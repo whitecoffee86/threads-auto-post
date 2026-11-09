@@ -133,7 +133,10 @@ EXPERIENCE_RULE = (
     "- 1인칭 경험은 실제로 하는 방식(레버리지 ETF를 8개 계좌로 나눠 분할매수·분할매도, ETF 적립식 장기 계좌, "
     "출퇴근길에 시장 확인)과 참고 글에 1인칭으로 나온 내용만 쓸 것. 그 밖의 과거 매매 사건·손실·감정"
     "('계좌가 다 녹아 있었어요', '그때 멘탈이 나갔어요', '~를 기다렸어요')은 지어내지 말 것. "
-    "시장 상황은 '그때 주식·채권이 같이 빠졌어요'처럼 사실로만 쓰고 내 경험으로 바꾸지 말 것"
+    "시장 상황은 '그때 주식·채권이 같이 빠졌어요'처럼 사실로만 쓰고 내 경험으로 바꾸지 말 것\n"
+    "- 지금 방식이 어떻게 생겼는지 같은 과거 사연('처음엔 계좌 두 개로 시작했는데 하나씩 늘렸어요')도 지어내지 말 것. "
+    "지금 하는 방식과 그 이유만 쓸 것\n"
+    "- 참고 글의 계산·통계 결과는 '계산해 보면 ~예요', '~라고 해요'처럼 쓰고, '~더라고요'로 내가 직접 겪은 것처럼 쓰지 말 것"
 )
 
 # 글 길이를 섞어서 매번 '훅 한 줄 + 3문장 + 질문' 같은 똑같은 모양이 되지 않게
@@ -396,12 +399,24 @@ def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
     return text
 
 
+def _is_risky(sentence: str) -> bool:
+    """해요체에선 '몇 번에 나눠서 사세요?'처럼 '사세요'가 질문으로도 쓰임 → 물음표로 끝나는 질문의 '사세요'는 권유가 아님."""
+    s = sentence.strip()
+    for w in RISKY_FINANCE_WORDS:
+        if w not in s:
+            continue
+        if w == "사세요" and s.endswith("?") and "꼭 사" not in s:
+            continue
+        return True
+    return False
+
+
 def remove_risky_sentences(text: str) -> str:
     """수익 장담·매수 권유 같은 문장이 섞이면 그 문장만 제거."""
     out = []
     for line in text.split("\n"):
         sentences = re.split(r"(?<=[.!?~])\s+", line)
-        kept = [s for s in sentences if not any(w in s for w in RISKY_FINANCE_WORDS)]
+        kept = [s for s in sentences if not _is_risky(s)]
         if len(kept) != len(sentences):
             print(f"투자 권유성 문장 제거: {[s for s in sentences if s not in kept]}")
         out.append(" ".join(kept))
