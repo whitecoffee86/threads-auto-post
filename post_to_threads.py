@@ -1627,6 +1627,22 @@ def publish_video_slot(data: dict) -> bool:
     if not vid or vid in data.get("threads_videos", []) or not fresh:
         print(f"새 영상 없음(id={vid or '-'}, 16시간 안: {fresh})")
         return False
+    # 2026-11-10: 쿼카 공감 코미디 릴스(폴더 이름 *_skit-*)는 블로그 글이 아니라 개그라서,
+    # 블로그(홈 주소)를 읽어 정보형 글을 만들면 영상과 따로 논다 → meta 의 summary(상황+공감 한 줄)를 그대로 쓴다.
+    if "_skit-" in vid:
+        text = (meta.get("summary") or meta.get("title") or "").strip()
+        if not text:
+            print(f"쿼카 릴스({vid})에 summary·title 이 없어 건너뜀")
+            return False
+        print(f"\n쿼카 릴스 글: {meta.get('title')} ({vid})\n{text}\n")
+        if not post_to_threads(text, video_url=f"{base}/{meta.get('file', 'video.mp4')}"):
+            print("영상 발행 실패")
+            return False
+        print("발행 완료: 영상(쿼카 릴스)")
+        data.setdefault("threads_videos", []).append(vid)
+        _record(data, {"kind": "video", "link": "", "format": "skit", "text": text,
+                       "linked": False, "image": True, "video": vid})
+        return True
     # 2026-10-25: 같은 글이 21시 영상 → 다음 날 12시 캐러셀로 15시간 만에 또 나가던 것 막기.
     # 캐러셀(글당 조회 최고) 몫이거나 최근 3일 안에 스레드에 나간 글이면 영상은 건너뛰고 블로그 카드(과거 글)로.
     vlink = _norm(meta.get("link", ""))
