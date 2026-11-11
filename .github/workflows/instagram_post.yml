@@ -35,6 +35,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main   # 2026-11-11: 예약 실행이 트리거 시점 커밋(옛 발행 기록)을 받아 릴스 간격 가드를 지나침 → 실행 시점 최신 main
 
       - uses: actions/setup-python@v5
         with:
@@ -87,6 +89,8 @@ jobs:
       - name: 발행 기록·토큰 저장
         if: always() && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
         run: |
+          # 2026-11-11: autostash 충돌 표시가 그대로 커밋돼 이후 모든 실행이 JSON 오류로 멈춘 일 방지
+          if grep -q '^<<<<<<<\|^>>>>>>>' instagram_history.json; then echo "::error::instagram_history.json 충돌 표시"; git checkout -- instagram_history.json; exit 1; fi
           git add instagram_history.json
           if [ -f ig_token.enc ]; then git add ig_token.enc; fi
           git diff --staged --quiet || git commit -m "인스타 발행 기록 업데이트"
