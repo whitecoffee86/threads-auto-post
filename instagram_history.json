@@ -35,7 +35,8 @@
     "https://ideas07576.tistory.com/358",
     "https://ideas07576.tistory.com/359",
     "https://ideas07576.tistory.com/360",
-    "https://ideas07576.tistory.com/361"
+    "https://ideas07576.tistory.com/361",
+    "https://ideas07576.tistory.com/362"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -321,6 +322,14 @@
       "link": "https://ideas07576.tistory.com/361",
       "title": "적금 이자 계산 — 월 100만원 1년 연 4%면 세후 21만 9,960원",
       "images": "20261111_2030",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-12T20:47:14.021366+09:00",
+      "link": "https://ideas07576.tistory.com/362",
+      "title": "청년미래적금 이자 계산 — 월 50만원 3년 2,255만원, 일반 적금 4%보다 361만원 더",
+      "images": "20261112_2047",
       "cover": "navy",
       "threads_only": true
     }
@@ -774,6 +783,12 @@
       "item": "20261112_gold-etf-two-alarms",
       "title": "금값 떨어졌다는데 지금 더 사도 될까?",
       "media_id": "17939627595406374"
+    },
+    {
+      "at": "2026-11-12T20:45:58.301051+09:00",
+      "item": "20261112_skit-coin-coworker",
+      "title": "동료가 코인으로 벌었다는데 내 계좌는 파란 직장인",
+      "media_id": "18143425651623226"
     }
   ]
 }
