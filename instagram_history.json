@@ -36,7 +36,8 @@
     "https://ideas07576.tistory.com/359",
     "https://ideas07576.tistory.com/360",
     "https://ideas07576.tistory.com/361",
-    "https://ideas07576.tistory.com/362"
+    "https://ideas07576.tistory.com/362",
+    "https://ideas07576.tistory.com/363"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -330,6 +331,14 @@
       "link": "https://ideas07576.tistory.com/362",
       "title": "청년미래적금 이자 계산 — 월 50만원 3년 2,255만원, 일반 적금 4%보다 361만원 더",
       "images": "20261112_2047",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-13T20:39:43.051243+09:00",
+      "link": "https://ideas07576.tistory.com/363",
+      "title": "적금 vs 주식 — 월 50만원 3년, S&P500 적립이 적금을 이긴 건 77%",
+      "images": "20261113_2039",
       "cover": "navy",
       "threads_only": true
     }
@@ -795,6 +804,12 @@
       "item": "20261113_savings-interest-calc",
       "title": "매달 적금 넣는데 내 이자, 왜 적을까?",
       "media_id": "18495584926105558"
+    },
+    {
+      "at": "2026-11-13T20:38:23.428925+09:00",
+      "item": "20261113_skit-sell-rebound",
+      "title": "'조금만 더' 하다가 바닥에서 판 직장인",
+      "media_id": "17933559552424991"
     }
   ]
 }
