@@ -37,7 +37,8 @@
     "https://ideas07576.tistory.com/360",
     "https://ideas07576.tistory.com/361",
     "https://ideas07576.tistory.com/362",
-    "https://ideas07576.tistory.com/363"
+    "https://ideas07576.tistory.com/363",
+    "https://ideas07576.tistory.com/364"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -339,6 +340,14 @@
       "link": "https://ideas07576.tistory.com/363",
       "title": "적금 vs 주식 — 월 50만원 3년, S&P500 적립이 적금을 이긴 건 77%",
       "images": "20261113_2039",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-14T20:00:10.920619+09:00",
+      "link": "https://ideas07576.tistory.com/364",
+      "title": "산타랠리 확률 — S&P500 76번 중 58번 올랐고, 코스피는 동전 던지기",
+      "images": "20261114_2000",
       "cover": "navy",
       "threads_only": true
     }
@@ -810,6 +819,12 @@
       "item": "20261113_skit-sell-rebound",
       "title": "'조금만 더' 하다가 바닥에서 판 직장인",
       "media_id": "17933559552424991"
+    },
+    {
+      "at": "2026-11-14T19:58:49.544463+09:00",
+      "item": "20261114_skit-kimbap-lunch",
+      "title": "계좌 파란 날 점심 메뉴 고르는 직장인",
+      "media_id": "18096176588187120"
     }
   ]
 }
