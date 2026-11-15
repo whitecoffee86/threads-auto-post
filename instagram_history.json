@@ -38,7 +38,8 @@
     "https://ideas07576.tistory.com/361",
     "https://ideas07576.tistory.com/362",
     "https://ideas07576.tistory.com/363",
-    "https://ideas07576.tistory.com/364"
+    "https://ideas07576.tistory.com/364",
+    "https://ideas07576.tistory.com/365"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -348,6 +349,14 @@
       "link": "https://ideas07576.tistory.com/364",
       "title": "산타랠리 확률 — S&P500 76번 중 58번 올랐고, 코스피는 동전 던지기",
       "images": "20261114_2000",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-15T20:33:02.909758+09:00",
+      "link": "https://ideas07576.tistory.com/365",
+      "title": "ISA 세금 계산 — 수익 1,000만원이면 세금 79만 2천원, 일반 계좌의 절반",
+      "images": "20261115_2032",
       "cover": "navy",
       "threads_only": true
     }
@@ -825,6 +834,12 @@
       "item": "20261114_skit-kimbap-lunch",
       "title": "계좌 파란 날 점심 메뉴 고르는 직장인",
       "media_id": "18096176588187120"
+    },
+    {
+      "at": "2026-11-15T20:31:54.386919+09:00",
+      "item": "20261115_skit-index-high-blue",
+      "title": "지수는 사상 최고인데 내 계좌만 파란 직장인",
+      "media_id": "18124348610319023"
     }
   ]
 }
