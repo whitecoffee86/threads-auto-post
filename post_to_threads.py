@@ -634,57 +634,76 @@ def extract_visual_content(post: dict) -> dict | None:
 
 # ── 차트 렌더링 (SVG) ────────────────────────────────
 
+NEG_BLUE = "#4f86e8"        # 음수(하락) 막대 — 국내 관례대로 파란 계열
+NEG_BLUE_LIGHT = "#9cc2ff"
+
+
 def _render_bar_chart_svg(labels: list, values: list, unit: str,
                            w: int = 920, h: int = 460, x0: int = 0, y0: int = 0) -> str:
+    """막대 차트. 음수 값은 0 기준선 아래로 내려 그린다(수익률 비교처럼 +/-가 섞인 데이터 대응)."""
     n = len(values)
-    max_v = max(values) * 1.15 if max(values) > 0 else 1
-    max_idx = values.index(max(values))
-    plot_h = h - 90
+    pos_max = max(max(values), 0)
+    neg_min = min(min(values), 0)
+    has_neg = neg_min < 0
+
+    label_area = 90                      # 하단 항목명 영역
+    top_pad = 64 if pos_max > 0 else 16  # 양수 막대 위 값 라벨 자리
+    bot_pad = 56 if has_neg else 0       # 음수 막대 아래 값 라벨 자리
+    avail = h - label_area - top_pad - bot_pad
+    scale = avail / ((pos_max - neg_min) or 1)
+    zero_y = y0 + top_pad + pos_max * scale
+
+    # 강조 막대: 절댓값이 가장 큰 막대 (음수가 핵심인 카드에서도 손실이 강조되도록)
+    hl_idx = max(range(n), key=lambda i: abs(values[i]))
     gap = 28
     bar_w = (w - gap * (n - 1)) / n
 
     defs = []
     bars = []
     for i, (label, v) in enumerate(zip(labels, values)):
-        bar_h = max((v / max_v) * plot_h, 4)
+        bar_h = max(abs(v) * scale, 4)
         x = x0 + i * (bar_w + gap)
-        y = y0 + plot_h - bar_h
-        is_max = i == max_idx
+        is_neg = v < 0
+        y = zero_y if is_neg else zero_y - bar_h
+        is_hl = i == hl_idx
         gid = f"barGrad{i}"
 
-        if is_max:
-            defs.append(f'''
-                <linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="{BRAND_GOLD_LIGHT}"/>
-                    <stop offset="100%" stop-color="{BRAND_GOLD}"/>
-                </linearGradient>
-            ''')
-            glow = f'<rect x="{x-10:.1f}" y="{y-10:.1f}" width="{bar_w+20:.1f}" height="{bar_h+10:.1f}" rx="16" fill="{BRAND_GOLD}" opacity="0.35" filter="blur(20px)"/>'
-            fill = f"url(#{gid})"
-            value_fill = BRAND_GOLD_LIGHT
-            value_size = 44
+        if is_neg:
+            # 0선에서 멀어질수록 진해지도록 위→아래 방향
+            top_c, bot_c = (NEG_BLUE_LIGHT, NEG_BLUE) if is_hl else ("rgba(156,194,255,0.30)", "rgba(156,194,255,0.14)")
+            glow_c, value_fill_hl = NEG_BLUE, NEG_BLUE_LIGHT
         else:
-            defs.append(f'''
-                <linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="rgba(255,255,255,0.28)"/>
-                    <stop offset="100%" stop-color="rgba(255,255,255,0.12)"/>
-                </linearGradient>
-            ''')
+            top_c, bot_c = (BRAND_GOLD_LIGHT, BRAND_GOLD) if is_hl else ("rgba(255,255,255,0.28)", "rgba(255,255,255,0.12)")
+            glow_c, value_fill_hl = BRAND_GOLD, BRAND_GOLD_LIGHT
+
+        defs.append(f'''
+            <linearGradient id="{gid}" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="{top_c}"/>
+                <stop offset="100%" stop-color="{bot_c}"/>
+            </linearGradient>
+        ''')
+        if is_hl:
+            glow = f'<rect x="{x-10:.1f}" y="{y-10:.1f}" width="{bar_w+20:.1f}" height="{bar_h+20:.1f}" rx="16" fill="{glow_c}" opacity="0.35" filter="blur(20px)"/>'
+            value_fill, value_size = value_fill_hl, 44
+        else:
             glow = ""
-            fill = f"url(#{gid})"
-            value_fill = "rgba(255,255,255,0.75)"
+            value_fill = "rgba(156,194,255,0.85)" if is_neg else "rgba(255,255,255,0.75)"
             value_size = 36
+
+        # 값 라벨: 양수는 막대 위, 음수는 막대 아래. +/-가 섞이면 양수에 + 표시
+        value_text = f"+{v:g}" if (has_neg and v > 0) else f"{v:g}"
+        value_y = y + bar_h + value_size + 8 if is_neg else y - 20
 
         bars.append(f'''
             {glow}
-            <rect x="{x:.1f}" y="{y:.1f}" width="{bar_w:.1f}" height="{bar_h:.1f}" rx="12" fill="{fill}"/>
-            <text x="{x + bar_w/2:.1f}" y="{y - 20}" text-anchor="middle"
-                  font-family="{FONT}" font-size="{value_size}" font-weight="800" fill="{value_fill}">{v:g}{unit}</text>
-            <text x="{x + bar_w/2:.1f}" y="{y0 + plot_h + 46}" text-anchor="middle"
+            <rect x="{x:.1f}" y="{y:.1f}" width="{bar_w:.1f}" height="{bar_h:.1f}" rx="12" fill="url(#{gid})"/>
+            <text x="{x + bar_w/2:.1f}" y="{value_y:.1f}" text-anchor="middle"
+                  font-family="{FONT}" font-size="{value_size}" font-weight="800" fill="{value_fill}">{value_text}{unit}</text>
+            <text x="{x + bar_w/2:.1f}" y="{y0 + h - 44}" text-anchor="middle"
                   font-family="{FONT}" font-size="27" font-weight="600" fill="rgba(255,255,255,0.6)">{label}</text>
         ''')
 
-    baseline = f'<line x1="{x0}" y1="{y0+plot_h}" x2="{x0+w}" y2="{y0+plot_h}" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>'
+    baseline = f'<line x1="{x0}" y1="{zero_y:.1f}" x2="{x0+w}" y2="{zero_y:.1f}" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>'
     return f"<defs>{''.join(defs)}</defs>" + baseline + "".join(bars)
 
 
@@ -910,7 +929,7 @@ def render_data_card(hook: str, category: str, chart: dict, out_path: Path):
         chart_viewbox, chart_h_css = "0 0 920 500", 500
 
     middle_html = f'''
-        <svg width="920" height="{chart_h_css}" viewBox="{chart_viewbox}" xmlns="http://www.w3.org/2000/svg">
+        <svg width="920" height="{chart_h_css}" viewBox="{chart_viewbox}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
             {chart_svg}
         </svg>
     '''
