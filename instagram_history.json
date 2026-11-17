@@ -40,7 +40,8 @@
     "https://ideas07576.tistory.com/363",
     "https://ideas07576.tistory.com/364",
     "https://ideas07576.tistory.com/365",
-    "https://ideas07576.tistory.com/366"
+    "https://ideas07576.tistory.com/366",
+    "https://ideas07576.tistory.com/367"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -366,6 +367,14 @@
       "link": "https://ideas07576.tistory.com/366",
       "title": "ISA 해지 세금 — 3년 전에 깨면 154만원, 급하면 해지 대신 중도인출",
       "images": "20261116_2047",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-17T20:46:59.510737+09:00",
+      "link": "https://ideas07576.tistory.com/367",
+      "title": "ISA 연금 이전 세액공제 — 3,000만원 옮기면 49만 5천원 더 돌려받는다",
+      "images": "20261117_2046",
       "cover": "navy",
       "threads_only": true
     }
