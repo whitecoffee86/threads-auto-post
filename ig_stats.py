@@ -73,7 +73,12 @@ def main():
     hist = json.loads(HISTORY_FILE.read_text(encoding="utf-8")) if HISTORY_FILE.exists() else {}
     log = hist.get("log", [])
     by_id = {x.get("media_id"): x for x in log if x.get("media_id")}
-    reel_kind = {x.get("media_id"): x.get("kind", "video") for x in hist.get("reels", []) if x.get("media_id")}
+    def _rk(x):  # 2026-11-17: 기록에 kind 가 없던 예전 상황극·숫자형도 대기열 이름으로 구분
+        if x.get("kind"):
+            return x["kind"]
+        item = x.get("item", "")
+        return "skit" if "_skit-" in item else "num" if "_num-" in item else "video"
+    reel_kind = {x.get("media_id"): _rk(x) for x in hist.get("reels", []) if x.get("media_id")}
     reel_hook = {x.get("media_id"): x.get("hook") for x in hist.get("reels", []) if x.get("hook")}
 
     posts = []
@@ -116,7 +121,7 @@ def main():
         rows = [p for p in posts if p["type"] == kind]
         if rows:
             lines.append(f"- {'🗂️ 캐러셀' if kind == 'FEED' else '🎬 릴스'} {len(rows)}개: 도달 {avg(rows, 'reach'):.0f}, 저장 {avg(rows, 'saved'):.1f}, 공유 {avg(rows, 'shares'):.1f}")
-    for rk, label in (("video", "영상 쇼츠"), ("slides", "슬라이드")):
+    for rk, label in (("skit", "쿼카 상황극"), ("num", "숫자 한 방"), ("video", "유튜브 쇼츠 사본"), ("slides", "슬라이드")):
         rows = [p for p in posts if p.get("reel_kind") == rk]
         if rows:
             w = [p["avg_watch_ms"] for p in rows if p.get("avg_watch_ms")]

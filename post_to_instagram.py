@@ -60,6 +60,11 @@ REELS_PER_DAY = int(_CFG.get("reels_per_day", 1))
 # 2026-11-09(사용자와 함께): 슬라이드 릴스(시청 1.7초)·피드 캐러셀(6주 도달 0) 중단. feed_mode "off" + slide_reels false 면
 # 릴스는 대기열(쿼카 상황극·유튜브 쇼츠 사본)만 올리고, 장표는 스레드 12시 캐러셀 재료로만 매일 저녁 하나 렌더한다.
 SLIDE_REELS = bool(_CFG.get("slide_reels", True))
+# 2026-11-17(사용자와 함께): 슬롯별 릴스 종류. {"noon": ["num"], "evening": ["skit"]} — 점심 = 숫자 한 방 릴스,
+# 저녁 = 쿼카 상황극. 그 종류가 대기열에 없으면 유튜브 쇼츠 사본(short)으로 대신하고, 사본은 REEL_FALLBACK_DAYS 일
+# 지나면 대기열에서 정리한다. 설정이 없으면 예전처럼 가장 오래된 항목을 올린다.
+REEL_SLOTS = _CFG.get("reel_slots") or {}
+REEL_FALLBACK_DAYS = int(_CFG.get("reel_fallback_days", 3))
 REEL_MIN_GAP_H = 6
 KST = timezone(timedelta(hours=9))
 
@@ -777,16 +782,58 @@ def fetch_reels_queue() -> list[Path]:
     return items
 
 
-def remove_from_queue(item: Path):
-    subprocess.run(["rm", "-rf", str(item)])
+def remove_from_queue(*items: Path, why: str = "발행 후 제거"):
+    if not items:
+        return
+    for item in items:
+        subprocess.run(["rm", "-rf", str(item)])
     (REELS_DIR / "queue").mkdir(exist_ok=True)
     (REELS_DIR / "queue" / ".gitkeep").touch()
     _git("config", "user.name", "github-actions", cwd=REELS_DIR)
     _git("config", "user.email", "actions@github.com", cwd=REELS_DIR)
     _git("checkout", "--orphan", "rq_new", cwd=REELS_DIR)
     _git("add", "-A", cwd=REELS_DIR)
-    _git("commit", "-m", f"릴스 대기열: {item.name} 발행 후 제거", cwd=REELS_DIR)
+    _git("commit", "-m", f"릴스 대기열: {', '.join(i.name for i in items)} {why}", cwd=REELS_DIR)
     _git("push", "-f", "origin", f"rq_new:{REELS_BRANCH}", cwd=REELS_DIR)
+
+
+def reel_kind(name: str) -> str:
+    """대기열 폴더 이름으로 종류 구분: YYYYMMDD_skit-… = 상황극, YYYYMMDD_num-… = 숫자 한 방, 나머지 = 유튜브 쇼츠 사본."""
+    if "_skit-" in name:
+        return "skit"
+    if "_num-" in name:
+        return "num"
+    return "video"
+
+
+def _item_date(name: str):
+    try:
+        return datetime.strptime(name[:8], "%Y%m%d").date()
+    except ValueError:
+        return None
+
+
+def choose_reel(items: list[Path], done: set, slot: str | None, today) -> tuple[Path | None, list[Path]]:
+    """(올릴 항목, 대기열에서 지울 항목) — 지울 항목 = 이미 발행한 것 + 슬롯 설정이 있을 때 오래된 유튜브 사본."""
+    stale = [i for i in items if i.name in done]
+    items = [i for i in items if i.name not in done]
+    want = REEL_SLOTS.get(slot) if slot else None
+    if not want:  # 설정 없음 → 예전처럼 가장 오래된 것
+        return (items[0] if items else None), stale
+    for i in items:
+        d = _item_date(i.name)
+        if reel_kind(i.name) == "video" and d and (today - d).days > REEL_FALLBACK_DAYS:
+            stale.append(i)
+    items = [i for i in items if i not in stale]
+    pick = [i for i in items if reel_kind(i.name) in want]
+    if pick:
+        return pick[0], stale
+    fallback = [i for i in items if reel_kind(i.name) == "video"]
+    if fallback:
+        print(f"{slot} 슬롯: {want} 종류가 대기열에 없어 유튜브 쇼츠 사본으로 대신")
+        return fallback[0], stale
+    print(f"{slot} 슬롯: 올릴 {want} 항목이 대기열에 없음")
+    return None, stale
 
 
 def reel_caption(meta: dict) -> str:
@@ -854,22 +901,22 @@ def hook_order(paths: list[Path], hook: str) -> list[Path]:
     return [paths[1], paths[0], *paths[2:]] if hook == "number" and len(paths) > 2 else list(paths)
 
 
-def run_reel(h: dict):
+def run_reel(h: dict, slot: str | None = None):
     if not reel_slot_open(h, "영상 쇼츠 릴스"):
         return
     items = fetch_reels_queue()
     # 2026-11-07: 영상 작업이 큐를 다시 올리며 이미 발행한 항목이 되살아나 같은 영상이 이틀 연속 나감 → 발행 기록에 있는 항목은 건너뜀
     done = {x.get("item") for x in h.get("reels", []) if x.get("media_id")}
-    dup = [i for i in items if i.name in done]
-    if dup:
-        print(f"이미 발행한 대기열 항목 건너뜀: {[i.name for i in dup]}")
-    items = [i for i in items if i.name not in done]
-    if not items:
+    item, stale = choose_reel(items, done, slot, datetime.now(KST).date())
+    if stale:
+        print(f"대기열 정리 대상(이미 발행 / {REEL_FALLBACK_DAYS}일 지난 유튜브 사본): {[i.name for i in stale]}")
+    if not item:
+        if stale and not DRY_RUN:
+            remove_from_queue(*stale, why="정리")
         return
-    item = items[0]
     meta = json.loads((item / "meta.json").read_text(encoding="utf-8")) if (item / "meta.json").exists() else {}
     caption = reel_caption(meta)
-    print(f"릴스 대상: {item.name}\n[릴스 캡션]\n{caption}\n")
+    print(f"릴스 대상({slot or '-'} · {reel_kind(item.name)}): {item.name}\n[릴스 캡션]\n{caption}\n")
     if DRY_RUN:
         print("DRY RUN — 릴스 업로드 안 함")
         return
@@ -878,11 +925,12 @@ def run_reel(h: dict):
     media_id = publish_reel(raw_url(REELS_BRANCH, rel), caption, token)
     print(f"릴스 발행 완료! media_id={media_id}")
     h.setdefault("reels", []).append({"at": datetime.now(KST).isoformat(), "item": item.name,
-                                     "title": meta.get("title", ""), "media_id": media_id})
+                                     "title": meta.get("title", ""), "media_id": media_id,
+                                     "kind": reel_kind(item.name), "slot": slot})
     save_history(h)
     share_for_threads(item / "video.mp4", {"id": item.name, "kind": "short", "title": meta.get("title", ""),
                                            "summary": meta.get("summary", ""), "link": meta.get("blog_url", "")})
-    remove_from_queue(item)
+    remove_from_queue(item, *stale)
 
 
 THREADS_VIDEO_BRANCH = "threads-video"
@@ -1088,7 +1136,7 @@ def run_noon(h: dict):
     """점심 슬롯: 피드 캐러셀 없이 릴스 1개만. 영상 쇼츠 대기열 → 지난 캐러셀 장표 → (새 글이 2개 이상 남았을 때만) 새 장표."""
     if not reel_slot_open(h, "점심 릴스"):
         return
-    run_reel(h)
+    run_reel(h, "noon")
     if not SLIDE_REELS:
         return
     h = load_history()
@@ -1128,7 +1176,7 @@ def main():
             errors.append(e)
     if os.environ.get("IG_SKIP_REELS") != "1":
         try:
-            run_reel(load_history())
+            run_reel(load_history(), "evening")
         except Exception as e:
             print(f"릴스 실패: {e}")
             errors.append(e)
