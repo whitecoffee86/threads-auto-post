@@ -65,7 +65,8 @@ SLIDE_REELS = bool(_CFG.get("slide_reels", True))
 # 지나면 대기열에서 정리한다. 설정이 없으면 예전처럼 가장 오래된 항목을 올린다.
 REEL_SLOTS = _CFG.get("reel_slots") or {}
 REEL_FALLBACK_DAYS = int(_CFG.get("reel_fallback_days", 3))
-REEL_MIN_GAP_H = 6
+# 릴스 사이 최소 간격(시간). 2026-11-17: 하루 3개(12:44·16:44·20:44)로 늘려 6 → growth_config reel_min_gap_hours(3)
+REEL_MIN_GAP_H = float(_CFG.get("reel_min_gap_hours", 6))
 KST = timezone(timedelta(hours=9))
 
 ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
@@ -1157,10 +1158,15 @@ def main():
         return reel_selftest()
     h = load_history()
     now = datetime.now(KST)
-    noon = now.hour < 17 and os.environ.get("IG_SKIP_REELS") != "1"
+    # 2026-11-17: 오후 슬롯(15~18시, 유튜브 쇼츠 사본)이 설정돼 있으면 점심은 15시 전까지만
+    noon_end = 15 if "afternoon" in REEL_SLOTS else 17
+    noon = now.hour < noon_end and os.environ.get("IG_SKIP_REELS") != "1"
     if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not (11 <= now.hour <= 14 or 19 <= now.hour <= 23):
         print(f"예약 실행이 너무 늦게 도착함({now:%H:%M}) — 발행 시간대가 아니라 건너뜀")
         return
+    if "afternoon" in REEL_SLOTS and noon_end <= now.hour < 19 and os.environ.get("IG_SKIP_REELS") != "1":
+        print("오후 슬롯: 릴스만")
+        return run_reel(h, "afternoon")
     if noon and REELS_PER_DAY >= 2:
         print("점심 슬롯: 릴스만")
         return run_noon(h)
