@@ -799,7 +799,7 @@ def reel_caption(meta: dict) -> str:
         print(f"릴스 캡션 생성 실패(제목 사용): {e}")
         cap = meta.get("title", "")
     tags = meta.get("hashtags") or ["#재테크", "#직장인재테크", "#투자공부"]
-    return cap + "\n\n" + " ".join(tags[:6])
+    return cap + "\n\n" + " ".join(tags[:5])  # 인스타 해시태그 5개 제한
 
 
 def raw_url(branch: str, rel: str) -> str:
