@@ -41,7 +41,8 @@
     "https://ideas07576.tistory.com/364",
     "https://ideas07576.tistory.com/365",
     "https://ideas07576.tistory.com/366",
-    "https://ideas07576.tistory.com/367"
+    "https://ideas07576.tistory.com/367",
+    "https://ideas07576.tistory.com/368"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -375,6 +376,14 @@
       "link": "https://ideas07576.tistory.com/367",
       "title": "ISA 연금 이전 세액공제 — 3,000만원 옮기면 49만 5천원 더 돌려받는다",
       "images": "20261117_2046",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-18T20:47:43.770850+09:00",
+      "link": "https://ideas07576.tistory.com/368",
+      "title": "주식 1월 효과 — 코스피 1월 30번 중 19번 올랐고, S&P500은 평범했다",
+      "images": "20261118_2047",
       "cover": "navy",
       "threads_only": true
     }
@@ -892,6 +901,14 @@
       "media_id": "18099199031648428",
       "kind": "video",
       "slot": "afternoon"
+    },
+    {
+      "at": "2026-11-18T20:46:29.613534+09:00",
+      "item": "20261117_skit-red-day-meeting",
+      "title": "실적 꼴찌 회의 중에 계좌만 빨간 직장인",
+      "media_id": "18141268732726885",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
