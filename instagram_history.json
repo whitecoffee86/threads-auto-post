@@ -42,7 +42,8 @@
     "https://ideas07576.tistory.com/365",
     "https://ideas07576.tistory.com/366",
     "https://ideas07576.tistory.com/367",
-    "https://ideas07576.tistory.com/368"
+    "https://ideas07576.tistory.com/368",
+    "https://ideas07576.tistory.com/notice/377"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -384,6 +385,14 @@
       "link": "https://ideas07576.tistory.com/368",
       "title": "주식 1월 효과 — 코스피 1월 30번 중 19번 올랐고, S&P500은 평범했다",
       "images": "20261118_2047",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-19T20:48:12.179525+09:00",
+      "link": "https://ideas07576.tistory.com/notice/377",
+      "title": "블로그 소개 — 2012년부터 투자한 40대 직장인이 직접 계산해서 씁니다",
+      "images": "20261119_2048",
       "cover": "navy",
       "threads_only": true
     }
@@ -925,6 +934,14 @@
       "media_id": "17988517973892365",
       "kind": "video",
       "slot": "afternoon"
+    },
+    {
+      "at": "2026-11-19T20:47:12.324944+09:00",
+      "item": "20261118_skit-tv-mirroring",
+      "title": "회의실 TV에 내 주식앱 띄운 직장인",
+      "media_id": "17968956504198329",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
