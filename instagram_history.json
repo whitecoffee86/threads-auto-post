@@ -44,7 +44,8 @@
     "https://ideas07576.tistory.com/367",
     "https://ideas07576.tistory.com/368",
     "https://ideas07576.tistory.com/notice/377",
-    "https://ideas07576.tistory.com/369"
+    "https://ideas07576.tistory.com/369",
+    "https://ideas07576.tistory.com/371"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -402,6 +403,14 @@
       "link": "https://ideas07576.tistory.com/369",
       "title": "배당소득 분리과세 세율 — 배당 3천만원 세금 528만원, 신청하면 손해인 구간도 있다",
       "images": "20261120_2047",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-21T20:47:00.020449+09:00",
+      "link": "https://ideas07576.tistory.com/371",
+      "title": "배당소득 분리과세 건보료 — 배당 3천만원이면 연 81만원, 분리과세 배당은 빠질 수도",
+      "images": "20261121_2046",
       "cover": "navy",
       "threads_only": true
     }
@@ -983,6 +992,14 @@
       "media_id": "17897008791616097",
       "kind": "num",
       "slot": "noon"
+    },
+    {
+      "at": "2026-11-21T20:45:50.475002+09:00",
+      "item": "20261120_skit-extra-zero",
+      "title": "주문 수량에 0 하나 더 누른 직장인",
+      "media_id": "18101604290556405",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
