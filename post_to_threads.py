@@ -163,6 +163,64 @@ def ending_rule(ask: bool) -> str:
             "'저는 ~해요'로 끝낼 거면 위에 적힌 실제 방식(8개 계좌 분할매매, ETF 적립식)만 쓰고, 새 계획·습관을 지어내지 말 것")
 
 
+# ── 첫 줄 틀 섞기 (2026-11-23 주간 점검) ─────────────────────────────
+# 11/16~22 첫 줄이 '~라는 말, 절반만 맞아요'(4번)·'예전엔 ~줄 알았어요'(8번)·'A쪽이에요, 아니면 B쪽이에요?'(9번)로
+# 굳음 — 프롬프트 예시 문장을 모델이 그대로 따라 씀. 같은 주 글당 조회 24→10.6.
+# → 포맷마다 첫 줄 틀 여러 개 중 무작위 하나를 주고, 최근 24개 첫 줄을 보여 주고, 끝맺음이 2번 이상 겹치면 한 번 다시 씀.
+FIRST_LINE_STYLES = {
+    "opinion": ["'~라고들 하는데, 실제로는 반대예요'", "'~는 생각보다 위험해요'", "'~해도 괜찮다는 건 오해예요'",
+                "'~는 맞는 말인데 순서가 틀렸어요'", "흔히 듣는 말을 따옴표로 그대로 인용한 한 줄(다음 줄에서 뒤집기)"],
+    "question": ["'A랑 B 중에 어느 쪽이세요?'", "'~할 때 딱 하나만 확인한다면 뭘 보세요?'", "'~ 기준 정해두셨어요?'",
+                 "숫자를 맞혀 보게 하는 질문('~하면 얼마 남을까요?')"],
+    "confession": ["'예전엔 ~인 줄 알았어요'", "'~라고 생각했던 게 제일 큰 착각이었어요'",
+                   "'처음 ~ 볼 때 제일 헷갈렸던 건 ~예요'", "'~를 알고 나서 ~ 보는 눈이 바뀌었어요'"],
+    "number": ["숫자를 문장 맨 앞에('~원, ~하면 이만큼 차이 나요')", "'~하면 ~원이에요'", "숫자 두 개 비교('~는 ~, ~는 ~')"],
+    "routine": ["'저는 ~할 때 ~만 봐요'", "'~는 일부러 안 해요'", "'제가 ~를 정해둔 이유가 있어요'", "'~할 때 제 규칙은 하나예요'"],
+}
+CONNECTIVE_START = ("그럼", "그래서", "그런데", "그러면", "그렇다면", "근데")
+
+
+def first_line(text: str) -> str:
+    return next((l.strip() for l in (text or "").strip().split("\n") if l.strip()), "")
+
+
+def _tail(line: str) -> str:
+    return re.sub(r"[\s.?!,…~\"'”’)]+$", "", line)[-5:]
+
+
+def first_line_rule(fmt: str | None, recent_posts: list) -> str:
+    firsts = [first_line(r.get("text", "")) for r in recent_posts[-24:]]
+    listing = "\n".join(f"  · {f}" for f in firsts if f)
+    rule = ""
+    if fmt in FIRST_LINE_STYLES:
+        rule = f"- 이번 첫 줄 틀: {_rng.choice(FIRST_LINE_STYLES[fmt])}. 포맷 설명의 예시보다 이 틀을 우선할 것\n"
+    return rule + f"- 최근 3일 첫 줄들(아래)과 끝맺음 표현·문장 틀이 겹치면 안 됨:\n{listing}"
+
+
+def worn_first_line(text: str, recent_posts: list) -> bool:
+    line = first_line(text)
+    if line.startswith(CONNECTIVE_START):
+        return True
+    t = _tail(line)
+    if len(t) < 4:
+        return False
+    return sum(1 for r in recent_posts[-24:] if _tail(first_line(r.get("text", ""))) == t) >= 2
+
+
+def generate_fresh(client, prompt: str, recent_posts: list) -> str:
+    """생성 후 첫 줄이 최근 글과 같은 틀이면(또는 '그럼/그래서'로 시작하면) 한 번만 다시 씀."""
+    def once(p):
+        msg = client.messages.create(model="claude-opus-4-5", max_tokens=700,
+                                     messages=[{"role": "user", "content": p}])
+        return msg.content[0].text.strip()
+    text = once(prompt)
+    if worn_first_line(text, recent_posts):
+        print(f"첫 줄 틀이 최근 글과 겹쳐 다시 씀: {first_line(text)}")
+        text = once(prompt + f"\n\n※ 첫 줄을 '{first_line(text)}'처럼 쓰면 최근 글과 틀이 겹쳐. "
+                    "첫 줄을 완전히 다른 틀로, '그럼/그래서'로 시작하지 말고 다시 써.")
+    return text
+
+
 def drop_trailing_question(text: str) -> str:
     """질문 없이 끝내야 하는 글인데 마지막 줄이 질문이면 그 줄만 뺌 (해시태그 줄은 유지)."""
     lines = text.strip().split("\n")
@@ -185,17 +243,16 @@ POST_FORMATS = {
         "통념 뒤집기형",
         "첫 줄에 초보들이 흔히 믿는 말을 던지고 바로 뒤집기(예: '레버리지 ETF 오래 들고 있으면 복리로 불어난다고요? 오히려 반대예요'). "
         "왜 반대인지 구조적인 이유·원문 사실로 쉽게(지어낸 경험담 말고 원리로). "
-        "첫 줄 표현은 직전 글들과 겹치지 않게 바꿀 것 ('~라고요? 반대예요'만 반복하지 말고 '~라는 말, 절반만 맞아요', "
-        "'~는 생각보다 위험해요', '~해도 괜찮다는 건 오해예요' 등).",
+        "첫 줄 표현은 아래 '이번 첫 줄 틀'을 따르고 직전 글들과 겹치지 않게.",
     ),
     "question": (
         "질문형",
-        "첫 줄부터 독자에게 고르게 만드는 질문(예: 'A랑 B 중에 어느 쪽이세요?'). 내 선택과 이유를 밝히고, "
+        "첫 줄부터 독자가 바로 답하고 싶어지는 질문(표현은 아래 '이번 첫 줄 틀'). 내 선택과 이유를 밝히고, "
         "독자의 선택을 묻는 한 문장으로 마무리.",
     ),
     "confession": (
         "생각이 바뀐 것형",
-        "'예전엔 ~인 줄 알았어요'처럼 내가 잘못 알고 있던 생각으로 시작. 뭘 잘못 알았고 실제로는 어떤지. "
+        "내가 잘못 알고 있던 생각으로 시작(첫 줄 표현은 아래 '이번 첫 줄 틀'을 따를 것). 뭘 잘못 알았고 실제로는 어떤지. "
         "손해 본 금액·날짜·매매 사건 같은 구체적 에피소드는 지어내지 말고 '생각이 바뀐 것'만.",
     ),
     "number": (
@@ -284,8 +341,9 @@ def generate_standalone_post(recent_posts: list, fmt: str, topic: tuple) -> str:
 
 [작성 규칙]
 {VOICE_RULES}
-- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황이나 흔한 생각을 던질 것 (예: '~샀는데 왜 마이너스일까요?', '~부터 해야 하는 거 아닌가요?', '~라는 말, 절반만 맞아요'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
+- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황이나 흔한 생각을 던질 것 (예: '~샀는데 왜 마이너스일까요?', '~부터 해야 하는 거 아닌가요?'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
 - 같은 틀 반복 금지: 위에 이미 올린 글에 나온 문장 틀('~라고요? 반대예요', 'A vs B, 어느 쪽이세요?' 등)·소재(광역버스, 출근길/퇴근 후, 점심시간, 8개 계좌)는 이번 글에 쓰지 말 것. 첫 줄 시작 방식도 직전 글들과 다르게
+{first_line_rule(fmt, recent_posts)}
 {ending_rule(ask)}
 - 이모지는 0~1개, 해시태그는 맨 끝에 딱 1개 (#재테크 #주식 #직장인투자 #ETF 중)
 - 구체적인 수익률·금액·날짜·종목 매매 결과는 지어내지 말 것 (생각·원칙·태도 위주)
@@ -297,12 +355,7 @@ def generate_standalone_post(recent_posts: list, fmt: str, topic: tuple) -> str:
 - URL, "링크", "프로필", "댓글", "블로그" 같은 단어
 
 본문만 출력해. 다른 말 없이."""
-    msg = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=700,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    text = remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))
+    text = remove_risky_sentences(remove_link_mentions(generate_fresh(client, prompt, recent_posts)))
     if not ask:
         text = drop_trailing_question(text)
     return text[:490]
@@ -371,8 +424,9 @@ def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
 [작성 규칙]
 - 원문 내용을 요약하지 말고, 그중 핵심 포인트 '딱 하나'만 골라서 쓸 것
 {VOICE_RULES}
-- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황이나 흔한 생각을 던질 것 (예: '~샀는데 왜 마이너스일까요?', '~부터 해야 하는 거 아닌가요?', '~라는 말, 절반만 맞아요'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
+- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 독자가 겪어봤을 상황이나 흔한 생각을 던질 것 (예: '~샀는데 왜 마이너스일까요?', '~부터 해야 하는 거 아닌가요?'). '~고민해봤는데', '~정리', '~비교' 같은 분석·설명형 시작 금지
 - 같은 틀 반복 금지: 위에 이미 올린 글에 나온 문장 틀('~라고요? 반대예요', 'A vs B, 어느 쪽이세요?' 등)·소재(광역버스, 출근길/퇴근 후, 점심시간, 8개 계좌)는 이번 글에 쓰지 말 것. 첫 줄 시작 방식도 직전 글들과 다르게
+{first_line_rule(fmt, recent_posts)}
 {ending_rule(ask)}
 - 이모지는 0~1개
 - 해시태그는 맨 끝에 딱 1개만 (#재테크 #주식 #직장인투자 #ETF 중 글에 맞는 것)
@@ -386,13 +440,7 @@ def generate_threads_post(post: dict, recent_posts: list, fmt: str) -> str:
 
 본문만 출력해. 다른 말 없이."""
 
-    msg = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=700,
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    text = remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))
+    text = remove_risky_sentences(remove_link_mentions(generate_fresh(client, prompt, recent_posts)))
     if not ask:
         text = drop_trailing_question(text)
     if len(text) > 490:
@@ -1720,7 +1768,8 @@ def publish_blog_slot(data: dict, today) -> bool:
 RECYCLE_ANGLES = [
     "그 오해를 하게 되는 흔한 상황 하나를 먼저 보여 주고(지어낸 내 경험담 말고 '보통 이럴 때'), 왜 아닌지 원리 한 가지로",
     "원글의 핵심 원리 하나를 숫자 없이 아주 쉬운 비유 하나로 다시 설명",
-    "원글을 본 사람이 이어서 궁금해할 다음 질문 하나를 첫 줄에 던지고 답하기",
+    # 2026-11-23: '그럼 ~?' '그래서 ~' 처럼 앞 글이 있어야 읽히는 첫 줄이 나옴(조회 3·6·10) → 답을 첫 줄에
+    "원글 주제에서 사람들이 흔히 이어서 궁금해하는 질문 하나를 골라, 그 답(핵심 주장)을 첫 줄에 바로 말하고 이유로 풀기",
 ]
 
 
@@ -1797,7 +1846,8 @@ def generate_recycle_post(src: dict, src_text: str, recent_posts: list) -> str:
 - 원글의 첫 문장·문장을 그대로 쓰지 말 것. 원글을 안 본 사람도 이 글만으로 이해돼야 함
 {VOICE_RULES}
 - 원글이 반말이어도 이번 글은 해요체로 쓸 것
-- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈
+- 첫 줄은 30자 안팎의 후킹 문장, 그 뒤 줄바꿈. 피드에서 처음 보는 사람 기준으로 첫 줄만 읽어도 무슨 얘기인지 알게, 첫 줄에 핵심 주장을 넣을 것. '그럼', '그래서', '그런데'로 시작 금지
+{first_line_rule(None, recent_posts)}
 {ending_rule(False)}
 - 이모지는 0~1개, 해시태그는 맨 끝에 딱 1개 (#재테크 #주식 #직장인투자 #ETF 중)
 - 원글에 없는 구체적인 수익률·금액·날짜·매매 결과는 지어내지 말 것
@@ -1808,9 +1858,7 @@ def generate_recycle_post(src: dict, src_text: str, recent_posts: list) -> str:
 - URL, "링크", "프로필", "댓글", "블로그", "예전에 올린 글", "지난번 글" 같은 말
 
 본문만 출력해. 다른 말 없이."""
-    msg = client.messages.create(model="claude-opus-4-5", max_tokens=700,
-                                 messages=[{"role": "user", "content": prompt}])
-    text = remove_risky_sentences(remove_link_mentions(msg.content[0].text.strip()))
+    text = remove_risky_sentences(remove_link_mentions(generate_fresh(client, prompt, recent_posts)))
     return drop_trailing_question(text)[:490]
 
 
