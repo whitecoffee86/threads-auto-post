@@ -45,7 +45,8 @@
     "https://ideas07576.tistory.com/368",
     "https://ideas07576.tistory.com/notice/377",
     "https://ideas07576.tistory.com/369",
-    "https://ideas07576.tistory.com/371"
+    "https://ideas07576.tistory.com/371",
+    "https://ideas07576.tistory.com/370"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -411,6 +412,14 @@
       "link": "https://ideas07576.tistory.com/371",
       "title": "배당소득 분리과세 건보료 — 배당 3천만원이면 연 81만원, 분리과세 배당은 빠질 수도",
       "images": "20261121_2046",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-22T20:47:46.690838+09:00",
+      "link": "https://ideas07576.tistory.com/370",
+      "title": "배당소득 분리과세 요건 — 상장사 888곳 중 398곳 통과, 고배당 ETF는 대상이 아니다",
+      "images": "20261122_2047",
       "cover": "navy",
       "threads_only": true
     }
@@ -1008,6 +1017,14 @@
       "media_id": "18005537942806194",
       "kind": "num",
       "slot": "noon"
+    },
+    {
+      "at": "2026-11-22T20:46:40.029396+09:00",
+      "item": "20261121_skit-review-alert",
+      "title": "연말 면담 중에 목표가 알림 받은 직장인",
+      "media_id": "18346653880257177",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
