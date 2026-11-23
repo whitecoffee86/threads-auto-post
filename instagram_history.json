@@ -46,7 +46,8 @@
     "https://ideas07576.tistory.com/notice/377",
     "https://ideas07576.tistory.com/369",
     "https://ideas07576.tistory.com/371",
-    "https://ideas07576.tistory.com/370"
+    "https://ideas07576.tistory.com/370",
+    "https://ideas07576.tistory.com/373"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -420,6 +421,14 @@
       "link": "https://ideas07576.tistory.com/370",
       "title": "배당소득 분리과세 요건 — 상장사 888곳 중 398곳 통과, 고배당 ETF는 대상이 아니다",
       "images": "20261122_2047",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-23T20:48:39.282923+09:00",
+      "link": "https://ideas07576.tistory.com/373",
+      "title": "연금저축 중도해지 세금 — 4,000만원 깨면 660만원, 받은 환급보다 165만원 더 낸다",
+      "images": "20261123_2048",
       "cover": "navy",
       "threads_only": true
     }
@@ -1041,6 +1050,14 @@
       "media_id": "18129850195854858",
       "kind": "video",
       "slot": "afternoon"
+    },
+    {
+      "at": "2026-11-23T20:47:32.565186+09:00",
+      "item": "20261122_skit-elevator-same-stock",
+      "title": "엘리베이터에서 팀장님 폰에 내 종목 본 직장인",
+      "media_id": "17875415619693699",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
