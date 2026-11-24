@@ -12,6 +12,8 @@ spec = {"slides": [ {type, theme(dark|light, 생략하면 번갈아), ...}, ... 
   answer   : label, big, sub, timeline{from,to,mid[{label,pos(0~1, 시간 비율)}]}(선택)
   twist    : kicker, title, big, emoji, sub
   compare  : title, sub, bars[{label,value,tag,ratio(0~1),color(coral|green|gold)}], why
+  steps    : kicker, title, title_size(선택), steps[{top(블록 위 글자), label, note, w(가로 비율, 예: 걸린 개월),
+             color}], base(첫 계단 높이 0~1, 기본 .5), why — 계단 그래프(가로=걸린 시간, 높이=쌓인 양)
   takeaway : title, checks[], foot, blog, quokka(선택)
 2장은 넘기지 않은 사람에게 다시 뜨는 자리라, 그 장만 봐도 궁금해지게 쓴다.
 """
@@ -82,6 +84,12 @@ section.s{width:1080px;height:1350px;position:relative;overflow:hidden;padding:1
 .check{font-size:62px;font-weight:900;padding:34px 40px;border-radius:30px;display:flex;gap:24px;align-items:center;word-break:keep-all}
 .light .check{background:#fff;box-shadow:0 10px 0 rgba(22,33,62,.08)}
 .dark .check{background:rgba(255,255,255,.08)}
+.stairs{display:flex;align-items:flex-end;gap:16px;height:500px;margin:46px 0 40px}
+.stp{display:flex;flex-direction:column;min-width:0}
+.stp-top{font-size:38px;font-weight:900;text-align:center;margin-bottom:12px;white-space:nowrap}
+.stp-box{flex:1;border-radius:26px 26px 10px 10px;display:flex;flex-direction:column;align-items:center;padding-top:26px;color:#fff}
+.stp-box b{font-size:66px;font-weight:900;letter-spacing:-2px;line-height:1.1}
+.stp-box span{font-size:48px;font-weight:700;opacity:.9;margin-top:6px;white-space:nowrap}
 .blog{margin-top:auto;font-size:38px;font-weight:800;opacity:.85}
 .grow{flex:1}
 """
@@ -157,6 +165,21 @@ def slide(s, n, total):
         body = (f"<div class='title' style='font-size:68px'>{e(s.get('title'))}</div>"
                 f"<div class='sub' style='margin-top:18px'>{e(s.get('sub'))}</div>"
                 f"<div class='bars'>{bars}</div><div class='why'>{e(s.get('why'))}</div>")
+    elif k == "steps":
+        st = s.get("steps", [])
+        n_st = max(1, len(st))
+        tot = sum(float(x.get("w", 1)) for x in st) or 1
+        lo = float(s.get("base", 0.5))
+        cols = "".join(
+            f"<div class='stp' style='flex:{float(x.get('w', 1)) / tot:.4f} 1 0;"
+            f"height:{(lo + (1 - lo) * (i / (n_st - 1) if n_st > 1 else 1)) * 100:.1f}%'>"
+            f"<div class='stp-top'>{e(x.get('top'))}</div>"
+            f"<div class='stp-box {x.get('color', 'green')}'><b>{e(x.get('label'))}</b>"
+            f"<span>{e(x.get('note'))}</span></div></div>"
+            for i, x in enumerate(st))
+        body = (f"<div class='grow' style='flex:.2'></div><div class='kicker'>{e(s.get('kicker'))}</div>"
+                f"<div class='title' style='font-size:{int(s.get('title_size', 72))}px'>{e(s.get('title'))}</div>"
+                f"<div class='stairs'>{cols}</div><div class='why'>{e(s.get('why'))}</div>{GROW}")
     elif k == "takeaway":
         checks = "".join(f"<div class='check'>✅ <span>{e(c)}</span></div>" for c in s.get("checks", []))
         blog = f"<div class='blog'>📎 {e(s['blog'])}</div>" if s.get("blog") else ""
