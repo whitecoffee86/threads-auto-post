@@ -47,7 +47,8 @@
     "https://ideas07576.tistory.com/369",
     "https://ideas07576.tistory.com/371",
     "https://ideas07576.tistory.com/370",
-    "https://ideas07576.tistory.com/373"
+    "https://ideas07576.tistory.com/373",
+    "https://ideas07576.tistory.com/374"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -429,6 +430,14 @@
       "link": "https://ideas07576.tistory.com/373",
       "title": "연금저축 중도해지 세금 — 4,000만원 깨면 660만원, 받은 환급보다 165만원 더 낸다",
       "images": "20261123_2048",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-24T20:48:26.852583+09:00",
+      "link": "https://ideas07576.tistory.com/374",
+      "title": "연금소득세 계산 — 연금저축 1억 연금으로 받으면 세금 550만원, 해지의 3분의 1",
+      "images": "20261124_2048",
       "cover": "navy",
       "threads_only": true
     }
@@ -1066,6 +1075,14 @@
       "media_id": "17937194748414546",
       "kind": "num",
       "slot": "noon"
+    },
+    {
+      "at": "2026-11-24T20:47:17.271033+09:00",
+      "item": "20261123_skit-toast-account",
+      "title": "회식에서 건배사 차례가 온 주식 초보 직장인",
+      "media_id": "18378769837210394",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
