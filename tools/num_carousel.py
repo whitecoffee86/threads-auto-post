@@ -9,7 +9,8 @@ spec = {"slides": [ {type, theme(dark|light, 생략하면 번갈아), ...}, ... 
 슬라이드 종류
   hook     : kicker, title(<em>강조</em>), big, quokka(assets/quokka_a 파일 이름), hint
   guess    : kicker, drop{from,to,pct}(선택), question, options[]
-  answer   : label, big, sub, timeline{from,to,mid[{label,pos(0~1, 시간 비율)}]}(선택)
+  answer   : label, big, sub, timeline{from,to,mid[{label,pos(0~1, 시간 비율)}]}(선택),
+             bars[compare 와 같은 형식](선택, timeline 대신 정답 밑에 막대 비교)
   twist    : kicker, title, big, emoji, sub
   compare  : title, sub, bars[{label,value,tag,ratio(0~1),color(coral|green|gold)}], why
   steps    : kicker, title, title_size(선택), steps[{top(블록 위 글자), label, note, w(가로 비율, 예: 걸린 개월),
@@ -46,7 +47,7 @@ section.s{width:1080px;height:1350px;position:relative;overflow:hidden;padding:1
 .sub{font-size:44px;font-weight:500;line-height:1.45;opacity:.9;word-break:keep-all}
 .hint{position:absolute;bottom:64px;right:92px;font-size:36px;font-weight:700;opacity:.75}
 .foot{position:absolute;bottom:58px;left:92px;right:92px;font-size:26px;line-height:1.5;opacity:.6;word-break:keep-all}
-.q{position:absolute;right:40px;bottom:96px;height:430px}
+.q{position:absolute;right:56px;bottom:128px;height:360px}
 .qs{position:absolute;right:60px;bottom:150px;height:340px}
 .drop{display:flex;align-items:center;gap:24px;margin:26px 0 48px}
 .chip{padding:20px 30px;border-radius:28px;font-size:54px;font-weight:900;white-space:nowrap}
@@ -112,6 +113,13 @@ def e(s):  # 강조 태그(<em>, <br>)만 살리고 나머지는 이스케이프
     return t
 
 
+def bars_html(bars):
+    return "".join(
+        f"<div class='bar'><div class='bl'><span>{e(b.get('label'))}</span><b>{e(b.get('value'))}</b></div>"
+        f"<div class='track'><div class='fill {b.get('color', 'green')}' style='width:{max(0.2, min(1, float(b.get('ratio', 1)))) * 100}%'>"
+        f"{e(b.get('tag'))}</div></div></div>" for b in bars)
+
+
 def top(n, total):
     return f"<div class='top'><span class='brand'>🌱 주식농사</span><span class='pg'>{n} / {total}</span></div>"
 
@@ -148,6 +156,8 @@ def slide(s, n, total):
                   f"<div class='dot' style='right:-8px'></div>{marks}"
                   f"<div class='t' style='left:0'>{e(t.get('from'))}</div>"
                   f"<div class='t' style='right:0'>{e(t.get('to'))}</div></div><div class='grow'></div>")
+        if not tl and s.get("bars"):
+            tl = f"<div class='bars'>{bars_html(s['bars'])}</div><div class='grow'></div>"
         body = (f"<div class='grow' style='flex:.55'></div><span class='label'>{e(s.get('label'))}</span>"
                 f"<div class='big fit'>{e(s.get('big'))}</div>"
                 f"<div class='sub' style='margin-top:30px'>{e(s.get('sub'))}</div>{tl or GROW}")
@@ -158,10 +168,7 @@ def slide(s, n, total):
                 f"<div class='big fit'><em>{e(s.get('big'))}</em></div>"
                 f"<div class='sub' style='margin-top:26px'>{e(s.get('sub'))}</div><div class='grow'></div>")
     elif k == "compare":
-        bars = "".join(
-            f"<div class='bar'><div class='bl'><span>{e(b.get('label'))}</span><b>{e(b.get('value'))}</b></div>"
-            f"<div class='track'><div class='fill {b.get('color', 'green')}' style='width:{max(0.2, min(1, float(b.get('ratio', 1)))) * 100}%'>"
-            f"{e(b.get('tag'))}</div></div></div>" for b in s.get("bars", []))
+        bars = bars_html(s.get("bars", []))
         body = (f"<div class='title' style='font-size:68px'>{e(s.get('title'))}</div>"
                 f"<div class='sub' style='margin-top:18px'>{e(s.get('sub'))}</div>"
                 f"<div class='bars'>{bars}</div><div class='why'>{e(s.get('why'))}</div>")
