@@ -49,7 +49,8 @@
     "https://ideas07576.tistory.com/370",
     "https://ideas07576.tistory.com/373",
     "https://ideas07576.tistory.com/374",
-    "https://ideas07576.tistory.com/375"
+    "https://ideas07576.tistory.com/375",
+    "https://ideas07576.tistory.com/376"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -447,6 +448,14 @@
       "link": "https://ideas07576.tistory.com/375",
       "title": "사적연금 1500만원 초과 — 연 2,000만원이면 분리과세 330만원, 종합과세 69만원",
       "images": "20261125_2047",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-26T20:47:30.317186+09:00",
+      "link": "https://ideas07576.tistory.com/376",
+      "title": "미국배당다우존스 배당금 계산 — 1억이면 월 20만원, 월 100만원은 4억 9천만원",
+      "images": "20261126_2047",
       "cover": "navy",
       "threads_only": true
     }
@@ -1140,6 +1149,14 @@
       "media_id": "17941348566127197",
       "kind": "video",
       "slot": "afternoon"
+    },
+    {
+      "at": "2026-11-26T20:46:08.672679+09:00",
+      "item": "20261126_skit-blackfriday-paycheck",
+      "title": "블프 결제 눌렀다가 월급이 이미 ETF로 간 걸 깨달은 직장인",
+      "media_id": "18186719875445017",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
