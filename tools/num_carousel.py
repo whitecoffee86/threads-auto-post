@@ -15,7 +15,12 @@ spec = {"slides": [ {type, theme(dark|light, 생략하면 번갈아), ...}, ... 
   compare  : title, sub, bars[{label,value,tag,ratio(0~1),color(coral|green|gold)}], why
   steps    : kicker, title, title_size(선택), steps[{top(블록 위 글자), label, note, w(가로 비율, 예: 걸린 개월),
              color}], base(첫 계단 높이 0~1, 기본 .5), why — 계단 그래프(가로=걸린 시간, 높이=쌓인 양)
+  pairs    : kicker, title, legend[a 이름, b 이름], rows[{label, tag, a{value,ratio}, b{value,ratio}}], why
+             — 항목마다 막대 두 개(a=초록, b=코랄)를 나란히 놓는 묶음 막대(예: 나이별 중앙값 vs 평균).
+             ratio 는 전체 최댓값 대비 0~1, 값 글자는 막대 오른쪽에 붙는다.
   takeaway : title, checks[], foot, blog, quokka(선택)
+guess 의 drop 은 from/to 없이 pct 만 줘도 된다(큰 숫자 하나만 보여 줄 때).
+compare 에 tight: true 를 주면 막대 사이 간격을 줄인다(막대가 3개 이상이고 why 가 길 때).
 2장은 넘기지 않은 사람에게 다시 뜨는 자리라, 그 장만 봐도 궁금해지게 쓴다.
 """
 import html
@@ -93,6 +98,20 @@ section.s{width:1080px;height:1350px;position:relative;overflow:hidden;padding:1
 .stp-box span{font-size:48px;font-weight:700;opacity:.9;margin-top:6px;white-space:nowrap}
 .blog{margin-top:auto;font-size:38px;font-weight:800;opacity:.85}
 .grow{flex:1}
+.pairs{display:flex;flex-direction:column;gap:18px;margin:30px 0 30px}
+.pr{display:grid;grid-template-columns:200px 1fr;align-items:center;gap:18px}
+.pr .pl{font-size:46px;font-weight:900;line-height:1.1;white-space:nowrap}
+.pr .pl small{display:block;font-size:32px;font-weight:800;margin-top:6px}
+.dark .pr .pl small{color:#ffc93c}.light .pr .pl small{color:#ff5e5b}
+.pr .pb{display:flex;flex-direction:column;gap:6px}
+.pr .row{display:flex;align-items:center;gap:16px;height:40px}
+.pr .pbar{height:40px;border-radius:12px;min-width:14px}
+.pr .pv{font-size:34px;font-weight:800;white-space:nowrap}
+.legend{display:flex;gap:34px;font-size:34px;font-weight:800;margin-top:24px}
+.legend i{display:inline-block;width:30px;height:30px;border-radius:8px;margin-right:12px;vertical-align:-4px}
+.tight .bars{gap:16px;margin:24px 0 22px}
+.tight .bar .track{height:80px}
+.pairs+.why{font-size:40px}
 """
 
 GROW = "<div class='grow'></div>"
@@ -138,8 +157,10 @@ def slide(s, n, total):
         d = s.get("drop")
         drop = ""
         if d:
-            drop = (f"<div class='pct'>{e(d.get('pct'))}</div><div class='drop'><span class='chip a'>{e(d['from'])}</span>"
-                    f"<span class='arrow'>→</span><span class='chip b'>{e(d['to'])}</span></div>")
+            drop = f"<div class='pct'>{e(d.get('pct'))}</div>"
+            if d.get("from") and d.get("to"):
+                drop += (f"<div class='drop'><span class='chip a'>{e(d['from'])}</span>"
+                         f"<span class='arrow'>→</span><span class='chip b'>{e(d['to'])}</span></div>")
         opts = "".join(f"<div class='opt'>{e(o)}</div>" for o in s.get("options", []))
         body = (f"<div class='grow' style='flex:.12'></div><div class='kicker'>{e(s.get('kicker'))}</div>{drop}"
                 f"<div class='question'>{e(s.get('question'))}</div><div class='opts'>{opts}</div>{GROW}")
@@ -169,9 +190,9 @@ def slide(s, n, total):
                 f"<div class='sub' style='margin-top:26px'>{e(s.get('sub'))}</div><div class='grow'></div>")
     elif k == "compare":
         bars = bars_html(s.get("bars", []))
-        body = (f"<div class='title' style='font-size:68px'>{e(s.get('title'))}</div>"
+        body = (f"<div class='{'tight' if s.get('tight') else ''}'><div class='title' style='font-size:68px'>{e(s.get('title'))}</div>"
                 f"<div class='sub' style='margin-top:18px'>{e(s.get('sub'))}</div>"
-                f"<div class='bars'>{bars}</div><div class='why'>{e(s.get('why'))}</div>")
+                f"<div class='bars'>{bars}</div><div class='why'>{e(s.get('why'))}</div></div>")
     elif k == "steps":
         st = s.get("steps", [])
         n_st = max(1, len(st))
@@ -187,6 +208,22 @@ def slide(s, n, total):
         body = (f"<div class='grow' style='flex:.2'></div><div class='kicker'>{e(s.get('kicker'))}</div>"
                 f"<div class='title' style='font-size:{int(s.get('title_size', 72))}px'>{e(s.get('title'))}</div>"
                 f"<div class='stairs'>{cols}</div><div class='why'>{e(s.get('why'))}</div>{GROW}")
+    elif k == "pairs":
+        lg = s.get("legend") or ["", ""]
+        legend = (f"<div class='legend'><span><i class='green'></i>{e(lg[0])}</span>"
+                  f"<span><i class='coral'></i>{e(lg[1] if len(lg) > 1 else '')}</span></div>")
+
+        def pbar(x, color):
+            w = max(0.02, min(1, float(x.get("ratio", 1)))) * 100
+            return (f"<div class='row'><div class='pbar {color}' style='width:calc((100% - 230px) * {w / 100:.4f})'></div>"
+                    f"<span class='pv'>{e(x.get('value'))}</span></div>")
+        rows = "".join(
+            f"<div class='pr'><div class='pl'>{e(r.get('label'))}<small>{e(r.get('tag'))}</small></div>"
+            f"<div class='pb'>{pbar(r.get('a', {}), 'green')}{pbar(r.get('b', {}), 'coral')}</div></div>"
+            for r in s.get("rows", []))
+        body = (f"<div class='kicker' style='margin-bottom:14px'>{e(s.get('kicker'))}</div>"
+                f"<div class='title' style='font-size:{int(s.get('title_size', 68))}px'>{e(s.get('title'))}</div>"
+                f"{legend}<div class='pairs'>{rows}</div><div class='why'>{e(s.get('why'))}</div>")
     elif k == "takeaway":
         checks = "".join(f"<div class='check'>✅ <span>{e(c)}</span></div>" for c in s.get("checks", []))
         blog = f"<div class='blog'>📎 {e(s['blog'])}</div>" if s.get("blog") else ""
