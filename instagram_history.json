@@ -50,7 +50,8 @@
     "https://ideas07576.tistory.com/373",
     "https://ideas07576.tistory.com/374",
     "https://ideas07576.tistory.com/375",
-    "https://ideas07576.tistory.com/376"
+    "https://ideas07576.tistory.com/376",
+    "https://ideas07576.tistory.com/378"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -456,6 +457,14 @@
       "link": "https://ideas07576.tistory.com/376",
       "title": "미국배당다우존스 배당금 계산 — 1억이면 월 20만원, 월 100만원은 4억 9천만원",
       "images": "20261126_2047",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-27T20:47:57.979451+09:00",
+      "link": "https://ideas07576.tistory.com/378",
+      "title": "1억 배당금 얼마 — 월배당 ETF 세후 20만~83만원, 예금은 25만원",
+      "images": "20261127_2047",
       "cover": "navy",
       "threads_only": true
     }
@@ -1173,6 +1182,14 @@
       "media_id": "17926304475223520",
       "kind": "video",
       "slot": "afternoon"
+    },
+    {
+      "at": "2026-11-27T20:46:33.093410+09:00",
+      "item": "20261127_skit-us-market-allnighter",
+      "title": "밤새 미국장 보고 9시 회의 들어간 직장인",
+      "media_id": "17908393830600521",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
