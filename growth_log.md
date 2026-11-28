@@ -220,3 +220,8 @@ growth_config.json 이나 코드를 조정하고, 그 이유를 여기에 남긴
 - 바꾼 것: tools/num_carousel.py(숫자 한 방 캐러셀 1080×1350 PNG 렌더러) 추가. 예약 작업 '음악 캐러셀 키트 (매일 아침)' 07:51 KST — 장표 + 캡션 + 음악 추천을 사용자 폰으로 보냄. 기록은 메모리 /areas/ig-carousel-log.md
 - 사용자가 고른 것: 1번(블로그·유튜브에서 끌어오기)·2번(사람 목소리)·4번(콜라보) 안 함. growth_config feed_mode 는 "off" 그대로(자동 캐러셀은 계속 안 올림) — 수동 캐러셀은 리포트에 CAROUSEL_ALBUM 으로 잡힘
 - 다음에 볼 것(11/30·12/7): 수동 음악 캐러셀 도달이 릴스 110 벽을 넘는지, 보내기·저장 1 이상, 팔로워 변화. 릴스 하루 3개는 그대로
+
+### 2026-11-28 (매일 점검)
+- 신호(A): 스레드 지난 26시간 5개(정상 8). 11/26 21시~11/27 12시 6회 연속 실패 = Anthropic API 'credit balance too low'(11/27 14시부터 다시 정상), 11/27 18·21시 실패 = ubuntu-26.04 러너에서 playwright --with-deps 의 apt update 가 packages.microsoft.com 403
+- 조치: auto_post.yml 브라우저 설치를 `--with-deps … || playwright install chromium` 로 대신 설치하게 함(instagram_post.yml 과 같은 방식). dry run(force_kind=blog) 성공·Claude 호출도 정상 확인. 놓친 슬롯은 다시 안 올림(다음 정시 슬롯부터 정상)
+- 확인할 것: 크레딧 소진이 다시 오면 하루 대부분 발행이 멈춤 — 사용자에게 API 크레딧 잔액·자동 충전 확인 요청함. 인스타 릴스·장표는 정상
