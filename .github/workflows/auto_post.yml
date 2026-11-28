@@ -37,7 +37,9 @@ jobs:
       - name: 패키지 설치
         run: |
           pip install anthropic feedparser requests playwright
-          playwright install --with-deps chromium
+          # 2026-11-28: ubuntu-26.04 러너에서 --with-deps 의 apt update 가 packages.microsoft.com 403 으로 가끔 실패(11/27 18·21시 발행 누락)
+          # → 실패하면 의존성 없이 브라우저만 받음(크롬 실행 라이브러리는 러너 이미지에 이미 있음, instagram_post.yml 과 같은 방식)
+          playwright install --with-deps chromium || playwright install chromium
 
       - name: git 설정
         run: |
