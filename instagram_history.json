@@ -51,7 +51,8 @@
     "https://ideas07576.tistory.com/374",
     "https://ideas07576.tistory.com/375",
     "https://ideas07576.tistory.com/376",
-    "https://ideas07576.tistory.com/378"
+    "https://ideas07576.tistory.com/378",
+    "https://ideas07576.tistory.com/379"
   ],
   "token_refreshed_at": "2026-11-03T20:23:18.821258+09:00",
   "log": [
@@ -465,6 +466,14 @@
       "link": "https://ideas07576.tistory.com/378",
       "title": "1억 배당금 얼마 — 월배당 ETF 세후 20만~83만원, 예금은 25만원",
       "images": "20261127_2047",
+      "cover": "navy",
+      "threads_only": true
+    },
+    {
+      "at": "2026-11-28T20:47:09.745475+09:00",
+      "link": "https://ideas07576.tistory.com/379",
+      "title": "퇴직소득세 계산 — 퇴직금 1억, 근속 10년이면 426만원, 20년이면 123만원",
+      "images": "20261128_2047",
       "cover": "navy",
       "threads_only": true
     }
@@ -1206,6 +1215,14 @@
       "media_id": "18222407356358042",
       "kind": "video",
       "slot": "afternoon"
+    },
+    {
+      "at": "2026-11-28T20:45:53.939328+09:00",
+      "item": "20261128_skit-weekend-refresh",
+      "title": "토요일 아침 9시, 주식 앱 새로고침 47번 한 직장인",
+      "media_id": "18123936170064286",
+      "kind": "skit",
+      "slot": "evening"
     }
   ]
 }
